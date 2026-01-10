@@ -1,0 +1,33 @@
+# Core dependencies
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+selenium>=4.15.0
+playwright>=1.40.0
+yt-dlp>=2023.11.0
+
+# Image processing
+pillow>=10.1.0
+opencv-python>=4.8.0
+opencv-python-headless>=4.8.0
+imagehash>=4.3.0
+
+# AI/ML
+google-genai>=0.3.0
+
+# Configuration and utilities
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pyyaml>=6.0.1
+
+# Logging
+loguru>=0.7.2
+
+# Async support
+aiohttp>=3.9.0
+aiofiles>=23.2.0
+
+# Progress bars
+tqdm>=4.66.0
+
+# Numerical computing
+numpy>=1.24.0

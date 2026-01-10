@@ -1,0 +1,50 @@
+# FloodSense Data Engine Configuration
+
+# Crawler settings
+crawler:
+  max_workers: 4
+  timeout: 30
+  retry_count: 3
+  retry_delay: 1.0
+  user_agents:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Processor settings
+processor:
+  target_resolution: [1920, 1080]  # 1080p
+  min_resolution: [1280, 720]      # 720p minimum
+  blur_threshold: 100.0             # Laplacian variance threshold
+  scene_threshold: 30.0             # Scene change detection threshold
+  phash_threshold: 8                # pHash hamming distance for deduplication
+
+# Synthesizer settings
+synthesizer:
+  api_key: null                     # Set via FLOODSENSE_API_KEY environment variable
+  model: "gemini-2.0-flash-preview-image-generation"
+  max_retries: 5
+  retry_delay: 2.0
+  batch_size: 10
+
+# Data directories
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  synthetic_dir: "data/synthetic"
+  checkpoint_dir: "data/.checkpoints"
+
+# Proxy settings
+proxy:
+  enabled: false
+  http: null
+  https: null
+  rotation_enabled: false
+  proxy_list: []
+
+# Logging settings
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  rotation: "10 MB"
+  retention: "7 days"
