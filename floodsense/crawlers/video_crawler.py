@@ -1,0 +1,201 @@
+"""
+Video crawler for downloading flood-related videos.
+
+Uses yt-dlp for downloading videos from YouTube and other platforms.
+"""
+
+import subprocess
+from pathlib import Path
+from typing import List, Optional
+
+import yt_dlp
+from loguru import logger
+from tqdm import tqdm
+
+from floodsense.crawlers.base import BaseCrawler
+
+
+class VideoCrawler(BaseCrawler):
+    """
+    Video crawler using yt-dlp for downloading videos.
+
+    Supports YouTube and other video platforms.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize VideoCrawler."""
+        super().__init__(*args, **kwargs)
+
+    def crawl(
+        self,
+        keywords: List[str],
+        max_results: int = 10,
+        platform: str = "youtube",
+    ) -> List[Path]:
+        """
+        Crawl videos for given keywords.
+
+        Args:
+            keywords: List of search keywords.
+            max_results: Maximum videos to download per keyword.
+            platform: Video platform (youtube, vimeo, etc.).
+
+        Returns:
+            List of paths to downloaded videos.
+        """
+        downloaded_paths: List[Path] = []
+
+        for keyword in keywords:
+            logger.info(f"Starting video crawl for keyword: {keyword}")
+            urls = self._search_videos(keyword, max_results, platform)
+            logger.info(f"Found {len(urls)} video URLs for '{keyword}'")
+
+            keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
+            keyword_dir.mkdir(parents=True, exist_ok=True)
+
+            paths = self._download_videos(urls, keyword_dir, keyword)
+            downloaded_paths.extend(paths)
+
+        return downloaded_paths
+
+    def _search_videos(
+        self,
+        keyword: str,
+        max_results: int,
+        platform: str,
+    ) -> List[str]:
+        """
+        Search for videos using yt-dlp.
+
+        Args:
+            keyword: Search keyword.
+            max_results: Maximum results to return.
+            platform: Video platform.
+
+        Returns:
+            List of video URLs.
+        """
+        urls: List[str] = []
+
+        search_query = f"{platform}search:{keyword}"
+
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+            "max_downloads": max_results,
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(search_query, download=False)
+
+                if info and "entries" in info:
+                    for entry in info["entries"]:
+                        if entry:
+                            urls.append(entry["url"])
+
+        except Exception as e:
+            logger.error(f"Failed to search videos for '{keyword}': {e}")
+
+        logger.info(f"Found {len(urls)} videos for '{keyword}'")
+        return urls
+
+    def _download_videos(
+        self,
+        urls: List[str],
+        output_dir: Path,
+        keyword: str,
+    ) -> List[Path]:
+        """
+        Download videos using yt-dlp.
+
+        Args:
+            urls: List of video URLs.
+            output_dir: Directory to save videos.
+            keyword: Keyword for progress display.
+
+        Returns:
+            List of paths to downloaded videos.
+        """
+        downloaded_paths: List[Path] = []
+
+        with tqdm(
+            total=len(urls),
+            desc=f"Downloading videos: {keyword}",
+            unit="vid",
+        ) as pbar:
+            for url in urls:
+                try:
+                    filepath = self._download_single_video(url, output_dir)
+                    if filepath:
+                        downloaded_paths.append(filepath)
+                except Exception as e:
+                    logger.error(f"Failed to download video {url}: {e}")
+                pbar.update(1)
+
+        return downloaded_paths
+
+    def _download_single_video(
+        self,
+        url: str,
+        output_dir: Path,
+    ) -> Optional[Path]:
+        """
+        Download a single video.
+
+        Args:
+            url: Video URL.
+            output_dir: Directory to save video.
+
+        Returns:
+            Path to downloaded file or None if failed.
+        """
+        ydl_opts = {
+            "format": "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best",
+            "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
+            "quiet": True,
+            "no_warnings": True,
+            "writesubtitles": False,
+            "writeautomaticsub": False,
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                if info:
+                    filename = ydl.prepare_filename(info)
+                    return Path(filename)
+        except Exception as e:
+            logger.error(f"Failed to download video {url}: {e}")
+
+        return None
+
+    @staticmethod
+    def _sanitize_keyword(keyword: str) -> str:
+        """
+        Sanitize keyword for use as directory name.
+
+        Args:
+            keyword: Raw keyword string.
+
+        Returns:
+            Sanitized keyword.
+        """
+        import re
+        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
+        sanitized = sanitized.strip().replace(" ", "_")
+        return sanitized
+
+    def get_video_urls(self, keyword: str, max_results: int = 100) -> List[str]:
+        """
+        Get video URLs for a keyword (required by BaseCrawler).
+
+        Args:
+            keyword: Search keyword.
+            max_results: Maximum number of URLs to return.
+
+        Returns:
+            List of video URLs.
+        """
+        return self._search_videos(keyword, max_results, "youtube")
