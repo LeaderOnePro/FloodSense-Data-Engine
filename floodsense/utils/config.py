@@ -83,6 +83,31 @@ class ProxyConfig(BaseModel):
     proxy_list: list[str] = Field(default_factory=list)
 
 
+class ValidatorConfig(BaseModel):
+    """Configuration for image content validation."""
+
+    enabled: bool = Field(default=True, description="Enable content validation")
+    enable_heuristic: bool = Field(
+        default=True, description="Enable fast heuristic filtering"
+    )
+    enable_clip: bool = Field(
+        default=True, description="Enable CLIP-based validation"
+    )
+    clip_threshold: float = Field(
+        default=0.25, description="CLIP similarity threshold (0-1)"
+    )
+    clip_model: str = Field(
+        default="openai/clip-vit-base-patch32",
+        description="CLIP model name",
+    )
+    device: Optional[str] = Field(
+        default=None, description="Device to use (cuda/cpu/auto)"
+    )
+    batch_size: int = Field(
+        default=32, description="Batch size for CLIP inference"
+    )
+
+
 class Config(BaseModel):
     """Main configuration container."""
 
@@ -91,6 +116,7 @@ class Config(BaseModel):
     synthesizer: SynthesizerConfig = Field(default_factory=SynthesizerConfig)
     data: DataConfig = Field(default_factory=DataConfig)
     proxy: ProxyConfig = Field(default_factory=ProxyConfig)
+    validator: ValidatorConfig = Field(default_factory=ValidatorConfig)
 
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":

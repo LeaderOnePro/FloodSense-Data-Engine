@@ -13,6 +13,7 @@ from loguru import logger
 
 from floodsense.crawlers.image_spider import ImageSpider
 from floodsense.utils.config import Config
+from floodsense.validators.image_validator import ImageValidator
 
 
 def main():
@@ -55,10 +56,22 @@ def main():
     # Load configuration
     config = Config.load(args.config)
 
+    # Initialize validator
+    validator: Optional[ImageValidator] = None
+    if config.validator.enabled:
+        validator = ImageValidator(
+            clip_threshold=config.validator.clip_threshold,
+            clip_model_name=config.validator.clip_model,
+            enable_heuristic=config.validator.enable_heuristic,
+            enable_clip=config.validator.enable_clip,
+            device=config.validator.device,
+        )
+
     # Initialize crawler
     crawler = ImageSpider(
         config=config.crawler,
         output_dir=args.output_dir,
+        validator=validator,
     )
 
     # Crawl images

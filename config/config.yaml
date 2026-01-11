@@ -48,3 +48,13 @@ logging:
   log_dir: "logs"
   rotation: "10 MB"
   retention: "7 days"
+
+# Validator settings
+validator:
+  enabled: true
+  enable_heuristic: true
+  enable_clip: true
+  clip_threshold: 0.25
+  clip_model: "openai/clip-vit-base-patch32"
+  device: null  # auto-detect (cuda/cpu)
+  batch_size: 32

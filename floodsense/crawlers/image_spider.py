@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.file_utils import CheckpointManager
+from floodsense.validators.image_validator import ImageValidator
 
 
 class ImageSpider(BaseCrawler):
@@ -28,10 +29,11 @@ class ImageSpider(BaseCrawler):
     # Image URL patterns for different sources
     IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, validator: Optional[ImageValidator] = None, **kwargs) -> None:
         """Initialize ImageSpider."""
         super().__init__(*args, **kwargs)
         self.checkpoint_manager: Optional[CheckpointManager] = None
+        self.validator = validator
 
     def crawl(
         self,
@@ -64,7 +66,7 @@ class ImageSpider(BaseCrawler):
             keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
             keyword_dir.mkdir(parents=True, exist_ok=True)
 
-            paths = self._download_images(urls, keyword_dir, keyword)
+            paths = self._download_images(urls, keyword_dir, keyword, keywords)
             downloaded_paths.extend(paths)
 
         return downloaded_paths
@@ -162,6 +164,7 @@ class ImageSpider(BaseCrawler):
         urls: List[str],
         output_dir: Path,
         keyword: str,
+        keywords: Optional[List[str]] = None,
     ) -> List[Path]:
         """
         Download images concurrently.
@@ -170,6 +173,7 @@ class ImageSpider(BaseCrawler):
             urls: List of image URLs.
             output_dir: Directory to save images.
             keyword: Keyword for checkpoint naming.
+            keywords: Keywords for content validation.
 
         Returns:
             List of paths to downloaded images.
@@ -200,6 +204,7 @@ class ImageSpider(BaseCrawler):
                     url,
                     output_dir,
                     idx,
+                    keywords,
                 ): (url, idx)
                 for idx, url in enumerate(remaining_urls)
             }
@@ -228,6 +233,7 @@ class ImageSpider(BaseCrawler):
         url: str,
         output_dir: Path,
         idx: int,
+        keywords: Optional[List[str]] = None,
     ) -> Optional[Path]:
         """
         Download a single image.
@@ -236,6 +242,7 @@ class ImageSpider(BaseCrawler):
             url: Image URL.
             output_dir: Directory to save image.
             idx: Index for filename.
+            keywords: Keywords for content validation.
 
         Returns:
             Path to downloaded file or None if failed.
@@ -273,6 +280,14 @@ class ImageSpider(BaseCrawler):
                 logger.warning(f"Invalid image file {filepath}: {e}")
                 filepath.unlink()
                 return None
+
+            # Validate content if validator is enabled
+            if self.validator and keywords:
+                is_valid = self.validator.validate(filepath, keywords)
+                if not is_valid:
+                    logger.debug(f"Image failed content validation: {filepath}")
+                    filepath.unlink()
+                    return None
 
             return filepath
 
