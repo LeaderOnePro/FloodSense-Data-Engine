@@ -54,8 +54,8 @@ class BaseCrawler(ABC):
         self.output_dir = Path(output_dir) if output_dir else Path("data/raw")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        self.session = self._create_session()
         self.user_agents = self.config.user_agents or self.DEFAULT_USER_AGENTS
+        self.session = self._create_session()
 
     def _create_session(self) -> requests.Session:
         """

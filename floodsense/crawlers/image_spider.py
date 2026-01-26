@@ -53,8 +53,10 @@ class ImageSpider(BaseCrawler):
             List of paths to downloaded images.
         """
         if enable_resume:
+            checkpoint_dir = Path("data/.checkpoints")
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
             self.checkpoint_manager = CheckpointManager(
-                self.config.data.checkpoint_dir, task_name="image_spider"
+                checkpoint_dir, task_name="image_spider"
             )
         downloaded_paths: List[Path] = []
 
@@ -73,7 +75,7 @@ class ImageSpider(BaseCrawler):
 
     def get_image_urls(self, keyword: str, max_results: int = 100) -> List[str]:
         """
-        Get image URLs using Google Images search.
+        Get image URLs using Google Images search with Playwright.
 
         Args:
             keyword: Search keyword.
@@ -82,30 +84,64 @@ class ImageSpider(BaseCrawler):
         Returns:
             List of image URLs.
         """
+        from playwright.sync_api import sync_playwright
+        import time
+
         urls: List[str] = []
-        page = 0
-        results_per_page = 100
+        seen: Set[str] = set()
 
-        while len(urls) < max_results:
-            search_url = self._build_search_url(keyword, page * results_per_page)
-            response = self.request_with_retry(search_url)
+        search_url = self._build_search_url(keyword, 0)
+        logger.info(f"Opening browser for: {search_url}")
 
-            if response is None:
-                logger.warning(f"Failed to fetch search results for page {page}")
-                break
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent=self.user_agents[0],
+                viewport={"width": 1920, "height": 1080},
+            )
+            page = context.new_page()
 
-            page_urls = self._extract_image_urls(response.text)
-            if not page_urls:
-                logger.info(f"No more images found for '{keyword}' on page {page}")
-                break
+            try:
+                page.goto(search_url, wait_until="networkidle", timeout=30000)
+                time.sleep(2)
 
-            urls.extend(page_urls)
-            page += 1
+                # Scroll to load more images
+                scroll_count = 0
+                max_scrolls = max(5, max_results // 20)
 
-            # Rate limiting
-            if len(urls) < max_results:
-                import time
-                time.sleep(1)
+                while len(urls) < max_results and scroll_count < max_scrolls:
+                    # Extract image URLs from current page
+                    page_content = page.content()
+                    page_urls = self._extract_image_urls(page_content)
+
+                    for url in page_urls:
+                        if url not in seen:
+                            seen.add(url)
+                            urls.append(url)
+
+                    if len(urls) >= max_results:
+                        break
+
+                    # Scroll down
+                    page.evaluate("window.scrollBy(0, window.innerHeight)")
+                    time.sleep(1)
+                    scroll_count += 1
+
+                    # Click "Show more results" if present
+                    try:
+                        show_more = page.locator("input[value='Show more results']")
+                        if show_more.is_visible(timeout=1000):
+                            show_more.click()
+                            time.sleep(2)
+                    except Exception:
+                        pass
+
+                logger.info(f"Extracted {len(urls)} URLs after {scroll_count} scrolls")
+
+            except Exception as e:
+                logger.error(f"Playwright error: {e}")
+            finally:
+                browser.close()
 
         return urls[:max_results]
 
