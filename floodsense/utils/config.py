@@ -108,6 +108,35 @@ class ValidatorConfig(BaseModel):
     )
 
 
+class APISourceConfig(BaseModel):
+    """Configuration for a single API image source."""
+
+    enabled: bool = Field(default=True, description="Whether this source is enabled")
+    api_key: Optional[str] = Field(default=None, description="API key for the service")
+    rate_limit: int = Field(default=100, description="Requests per hour limit")
+    priority: int = Field(default=5, description="Source priority (1=highest)")
+
+
+class APISourcesConfig(BaseModel):
+    """Configuration for all API image sources."""
+
+    unsplash: APISourceConfig = Field(
+        default_factory=lambda: APISourceConfig(rate_limit=50, priority=1)
+    )
+    pexels: APISourceConfig = Field(
+        default_factory=lambda: APISourceConfig(rate_limit=200, priority=2)
+    )
+    nasa: APISourceConfig = Field(
+        default_factory=lambda: APISourceConfig(enabled=True, rate_limit=0, priority=3)
+    )
+    wikimedia: APISourceConfig = Field(
+        default_factory=lambda: APISourceConfig(enabled=True, rate_limit=0, priority=4)
+    )
+    flickr: APISourceConfig = Field(
+        default_factory=lambda: APISourceConfig(rate_limit=3600, priority=5)
+    )
+
+
 class Config(BaseModel):
     """Main configuration container."""
 
@@ -117,6 +146,7 @@ class Config(BaseModel):
     data: DataConfig = Field(default_factory=DataConfig)
     proxy: ProxyConfig = Field(default_factory=ProxyConfig)
     validator: ValidatorConfig = Field(default_factory=ValidatorConfig)
+    api_sources: APISourcesConfig = Field(default_factory=APISourcesConfig)
 
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":
@@ -154,6 +184,22 @@ class Config(BaseModel):
                 if key == "max_workers":
                     value = int(value)
                 config_dict[section][key] = value
+
+        # API source key environment variables
+        api_key_mappings = {
+            "FLOODSENSE_UNSPLASH_API_KEY": "unsplash",
+            "FLOODSENSE_PEXELS_API_KEY": "pexels",
+            "FLOODSENSE_FLICKR_API_KEY": "flickr",
+        }
+
+        for env_var, source_name in api_key_mappings.items():
+            value = os.environ.get(env_var)
+            if value:
+                if "api_sources" not in config_dict:
+                    config_dict["api_sources"] = {}
+                if source_name not in config_dict["api_sources"]:
+                    config_dict["api_sources"][source_name] = {}
+                config_dict["api_sources"][source_name]["api_key"] = value
 
         return cls(**config_dict)
 
