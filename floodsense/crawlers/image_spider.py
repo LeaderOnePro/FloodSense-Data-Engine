@@ -75,7 +75,7 @@ class ImageSpider(BaseCrawler):
 
     def get_image_urls(self, keyword: str, max_results: int = 100) -> List[str]:
         """
-        Get image URLs using Google Images search with Playwright.
+        Get image URLs using Bing Images search with Playwright.
 
         Args:
             keyword: Search keyword.
@@ -90,7 +90,7 @@ class ImageSpider(BaseCrawler):
         urls: List[str] = []
         seen: Set[str] = set()
 
-        search_url = self._build_search_url(keyword, 0)
+        search_url = self._build_search_url(keyword, 0, engine="bing")
         logger.info(f"Opening browser for: {search_url}")
 
         with sync_playwright() as p:
@@ -107,7 +107,7 @@ class ImageSpider(BaseCrawler):
 
                 # Scroll to load more images
                 scroll_count = 0
-                max_scrolls = max(5, max_results // 20)
+                max_scrolls = max(10, max_results // 15)
 
                 while len(urls) < max_results and scroll_count < max_scrolls:
                     # Extract image URLs from current page
@@ -124,15 +124,15 @@ class ImageSpider(BaseCrawler):
 
                     # Scroll down
                     page.evaluate("window.scrollBy(0, window.innerHeight)")
-                    time.sleep(1)
+                    time.sleep(0.5)
                     scroll_count += 1
 
-                    # Click "Show more results" if present
+                    # Click "See more images" button for Bing if present
                     try:
-                        show_more = page.locator("input[value='Show more results']")
-                        if show_more.is_visible(timeout=1000):
-                            show_more.click()
-                            time.sleep(2)
+                        see_more = page.locator("a.btn_seemore")
+                        if see_more.is_visible(timeout=500):
+                            see_more.click()
+                            time.sleep(1)
                     except Exception:
                         pass
 
@@ -145,30 +145,36 @@ class ImageSpider(BaseCrawler):
 
         return urls[:max_results]
 
-    def _build_search_url(self, keyword: str, start: int = 0) -> str:
+    def _build_search_url(self, keyword: str, start: int = 0, engine: str = "bing") -> str:
         """
-        Build Google Images search URL.
+        Build image search URL.
 
         Args:
             keyword: Search keyword.
             start: Starting index for pagination.
+            engine: Search engine to use ("google" or "bing").
 
         Returns:
             Search URL.
         """
-        base_url = "https://www.google.com/search"
-        params = {
-            "q": keyword,
-            "tbm": "isch",
-            "start": start,
-            "ijn": "0",
-        }
-        param_str = "&".join(f"{k}={v}" for k, v in params.items())
-        return f"{base_url}?{param_str}"
+        if engine == "bing":
+            from urllib.parse import quote
+            base_url = "https://www.bing.com/images/search"
+            return f"{base_url}?q={quote(keyword)}&first={start}&count=150&qft=+filterui:photo-photo"
+        else:
+            base_url = "https://www.google.com/search"
+            params = {
+                "q": keyword,
+                "tbm": "isch",
+                "start": start,
+                "ijn": "0",
+            }
+            param_str = "&".join(f"{k}={v}" for k, v in params.items())
+            return f"{base_url}?{param_str}"
 
     def _extract_image_urls(self, html: str) -> List[str]:
         """
-        Extract image URLs from Google Images search results.
+        Extract image URLs from search results.
 
         Args:
             html: HTML content of search results page.
@@ -176,18 +182,26 @@ class ImageSpider(BaseCrawler):
         Returns:
             List of image URLs.
         """
+        from urllib.parse import unquote
+
         urls: List[str] = []
         seen: Set[str] = set()
 
-        # Extract URLs from data-src and src attributes
-        src_pattern = r'\["(https://[^"]+)",\d+,\d+\]'
-        matches = re.findall(src_pattern, html)
+        # Bing pattern: mediaurl parameter
+        bing_pattern = r'mediaurl=([^&"]+)'
+        bing_matches = re.findall(bing_pattern, html)
+        for url in bing_matches:
+            url = unquote(url)
+            if any(ext in url.lower() for ext in ["jpg", "jpeg", "png", "webp"]):
+                if url not in seen and url.startswith("http"):
+                    seen.add(url)
+                    urls.append(url)
 
-        for url in matches:
-            # Clean up URL
+        # Google pattern: data-src and src attributes
+        google_pattern = r'\["(https://[^"]+)",\d+,\d+\]'
+        google_matches = re.findall(google_pattern, html)
+        for url in google_matches:
             url = url.replace(r"\u003d", "=").replace(r"\u0026", "&")
-
-            # Filter for image URLs
             if any(ext in url.lower() for ext in ["jpg", "jpeg", "png", "webp"]):
                 if url not in seen:
                     seen.add(url)
