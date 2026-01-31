@@ -77,13 +77,17 @@ class VideoCrawler(BaseCrawler):
         """
         urls: List[str] = []
 
-        search_query = f"{platform}search:{keyword}"
+        # yt-dlp search format: ytsearch{N}:keyword for YouTube
+        if platform == "youtube":
+            search_query = f"ytsearch{max_results}:{keyword}"
+        else:
+            search_query = f"{platform}search{max_results}:{keyword}"
 
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
-            "extract_flat": True,
-            "max_downloads": max_results,
+            "extract_flat": "in_playlist",
+            "skip_download": True,
         }
 
         try:
@@ -92,8 +96,11 @@ class VideoCrawler(BaseCrawler):
 
                 if info and "entries" in info:
                     for entry in info["entries"]:
-                        if entry:
+                        if entry and entry.get("url"):
                             urls.append(entry["url"])
+                        elif entry and entry.get("id"):
+                            # Build YouTube URL from video ID
+                            urls.append(f"https://www.youtube.com/watch?v={entry['id']}")
 
         except Exception as e:
             logger.error(f"Failed to search videos for '{keyword}': {e}")
@@ -152,13 +159,28 @@ class VideoCrawler(BaseCrawler):
             Path to downloaded file or None if failed.
         """
         ydl_opts = {
-            "format": "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best",
+            "format": "18/best[protocol=https]/best",  # Prefer format 18 (360p) or https
             "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
             "writesubtitles": False,
             "writeautomaticsub": False,
+            "restrictfilenames": True,
+            "retries": 5,
+            "fragment_retries": 5,
+            "socket_timeout": 60,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                }
+            },
         }
+
+        # Add proxy if configured
+        if self.proxy_manager:
+            proxy = self.proxy_manager.get_proxy()
+            if proxy:
+                ydl_opts["proxy"] = proxy.get("http") or proxy.get("https")
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -189,7 +211,7 @@ class VideoCrawler(BaseCrawler):
 
     def get_video_urls(self, keyword: str, max_results: int = 100) -> List[str]:
         """
-        Get video URLs for a keyword (required by BaseCrawler).
+        Get video URLs for a keyword.
 
         Args:
             keyword: Search keyword.
@@ -199,3 +221,19 @@ class VideoCrawler(BaseCrawler):
             List of video URLs.
         """
         return self._search_videos(keyword, max_results, "youtube")
+
+    def get_image_urls(self, keyword: str, max_results: int = 100) -> List[str]:
+        """
+        Get image URLs (not applicable for video crawler).
+
+        This method is required by BaseCrawler but not used for videos.
+        Returns video URLs instead.
+
+        Args:
+            keyword: Search keyword.
+            max_results: Maximum number of URLs to return.
+
+        Returns:
+            List of video URLs.
+        """
+        return self.get_video_urls(keyword, max_results)

@@ -149,7 +149,7 @@ class ImageProcessor:
         threshold = threshold or self.config.phash_threshold
         logger.info(f"Deduplicating {len(image_paths)} images with threshold {threshold}")
 
-        seen_hashes: Set[str] = = set()
+        seen_hashes: Set[str] = set()
         unique_paths: List[Path] = []
 
         for img_path in tqdm(image_paths, desc="Deduplicating"):
