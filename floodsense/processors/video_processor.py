@@ -128,36 +128,38 @@ class VideoProcessor:
             List of keyframe indices.
         """
         keyframe_indices: List[int] = []
-        prev_frame = None
         prev_hist = None
 
         # Always include first frame
         keyframe_indices.append(0)
 
-        # Process frames in chunks to save memory
-        chunk_size = 100
-        for start_idx in range(0, total_frames, chunk_size):
-            end_idx = min(start_idx + chunk_size, total_frames)
+        # Reset to beginning
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-            for frame_idx in range(start_idx, end_idx):
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                ret, frame = cap.read()
+        # Read frames sequentially (much faster than seeking each frame)
+        frame_idx = 0
+        while frame_idx < total_frames:
+            ret, frame = cap.read()
 
-                if not ret:
-                    continue
+            if not ret:
+                break
 
-                # Calculate histogram difference
-                hist = self._calculate_histogram(frame)
+            # Calculate histogram difference
+            hist = self._calculate_histogram(frame)
 
-                if prev_hist is not None:
-                    diff = self._calculate_histogram_diff(prev_hist, hist)
+            if prev_hist is not None:
+                diff = self._calculate_histogram_diff(prev_hist, hist)
 
-                    # Scene change detected
-                    if diff > threshold:
-                        keyframe_indices.append(frame_idx)
+                # Scene change detected
+                if diff > threshold:
+                    keyframe_indices.append(frame_idx)
 
-                prev_frame = frame
-                prev_hist = hist
+            prev_hist = hist
+            frame_idx += 1
+
+            # Log progress every 5000 frames
+            if frame_idx % 5000 == 0:
+                logger.info(f"Scene detection progress: {frame_idx}/{total_frames} frames")
 
         return keyframe_indices
 

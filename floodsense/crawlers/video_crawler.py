@@ -159,7 +159,7 @@ class VideoCrawler(BaseCrawler):
             Path to downloaded file or None if failed.
         """
         ydl_opts = {
-            "format": "18/best[protocol=https]/best",  # Prefer format 18 (360p) or https
+            "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
             "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
@@ -169,11 +169,7 @@ class VideoCrawler(BaseCrawler):
             "retries": 5,
             "fragment_retries": 5,
             "socket_timeout": 60,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"],
-                }
-            },
+            "merge_output_format": "mp4",
         }
 
         # Add proxy if configured
