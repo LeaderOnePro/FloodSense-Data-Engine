@@ -14,7 +14,7 @@ crawler:
 # Processor settings
 processor:
   target_resolution: [1920, 1080]  # 1080p
-  min_resolution: [1280, 720]      # 720p minimum
+  min_resolution: [480, 360]       # 360p minimum (relaxed)
   blur_threshold: 100.0             # Laplacian variance threshold
   scene_threshold: 30.0             # Scene change detection threshold
   phash_threshold: 8                # pHash hamming distance for deduplication

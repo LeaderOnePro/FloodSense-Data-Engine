@@ -22,7 +22,7 @@ class ImageProcessor:
     """
 
     TARGET_RESOLUTION = (1920, 1080)  # 1080p
-    MIN_RESOLUTION = (1280, 720)      # 720p minimum
+    MIN_RESOLUTION = (480, 360)       # 360p minimum (relaxed)
 
     def __init__(self, config: Optional[ProcessorConfig] = None) -> None:
         """
@@ -213,7 +213,9 @@ class ImageProcessor:
         # Resolution standardization
         with tqdm(image_paths, desc="Standardizing resolution") as pbar:
             for img_path in pbar:
-                output_path = output_dir / img_path.name
+                # Use parent directory name as prefix to avoid filename collisions
+                parent_name = img_path.parent.name
+                output_path = output_dir / f"{parent_name}_{img_path.name}"
                 result = self.standardize_resolution(img_path, output_path)
 
                 if result is None:
