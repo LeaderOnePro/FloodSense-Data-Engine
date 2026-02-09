@@ -7,6 +7,7 @@ Common operations for file handling, checkpointing, and progress tracking.
 import hashlib
 import json
 import pickle
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Set
@@ -98,6 +99,24 @@ class FileUtils:
         for path in directory.glob(pattern):
             if path.is_file() and path.suffix.lower() in extensions:
                 yield path
+
+    @staticmethod
+    def sanitize_keyword(keyword: str) -> str:
+        """
+        Sanitize keyword for use as directory name.
+
+        Removes characters invalid in file paths and replaces spaces
+        with underscores.
+
+        Args:
+            keyword: Raw keyword string.
+
+        Returns:
+            Sanitized keyword safe for use as a directory name.
+        """
+        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
+        sanitized = sanitized.strip().replace(" ", "_")
+        return sanitized
 
 
 class CheckpointManager:

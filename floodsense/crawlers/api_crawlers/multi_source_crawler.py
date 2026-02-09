@@ -8,6 +8,7 @@ source ordering, auto-failover, and URL deduplication.
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Type
 
+import requests
 from loguru import logger
 
 from floodsense.crawlers.base import BaseCrawler
@@ -17,6 +18,7 @@ from floodsense.crawlers.api_crawlers.flickr_crawler import FlickrCrawler
 from floodsense.crawlers.api_crawlers.wikimedia_crawler import WikimediaCrawler
 from floodsense.crawlers.satellite_crawlers.nasa_crawler import NASACrawler
 from floodsense.utils.config import Config, CrawlerConfig
+from floodsense.utils.file_utils import FileUtils
 from floodsense.utils.proxy import ProxyManager
 
 
@@ -132,7 +134,7 @@ class MultiSourceCrawler(BaseCrawler):
                 self.enabled_sources.append(source_name)
                 logger.info(f"Enabled source: {source_name} (priority: {priority})")
 
-            except Exception as e:
+            except (TypeError, ValueError, KeyError) as e:
                 logger.warning(f"Failed to initialize {source_name}: {e}")
 
         # Sort enabled sources by priority
@@ -197,8 +199,8 @@ class MultiSourceCrawler(BaseCrawler):
                     f"({len(all_urls)} total so far)"
                 )
 
-            except Exception as e:
-                logger.error(f"Error fetching from {source_name}: {e}")
+            except (requests.exceptions.RequestException, ValueError, OSError) as e:
+                logger.exception(f"Error fetching from {source_name}: {e}")
                 # Auto-failover: continue to next source
                 continue
 
@@ -268,7 +270,7 @@ class MultiSourceCrawler(BaseCrawler):
                 logger.warning(f"No images found for: {keyword}")
                 continue
 
-            keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
+            keyword_dir = self.output_dir / FileUtils.sanitize_keyword(keyword)
             keyword_dir.mkdir(parents=True, exist_ok=True)
 
             for idx, url in enumerate(urls):
@@ -303,22 +305,6 @@ class MultiSourceCrawler(BaseCrawler):
         elif "nasa" in url_lower or "earthobservatory" in url_lower:
             return "nasa"
         return "unknown"
-
-    @staticmethod
-    def _sanitize_keyword(keyword: str) -> str:
-        """
-        Sanitize keyword for use as directory name.
-
-        Args:
-            keyword: Raw keyword string.
-
-        Returns:
-            Sanitized keyword.
-        """
-        import re
-        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
-        sanitized = sanitized.strip().replace(" ", "_")
-        return sanitized
 
     def get_source_status(self) -> Dict[str, Dict[str, Any]]:
         """

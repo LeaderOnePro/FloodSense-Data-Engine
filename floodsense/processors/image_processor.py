@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 from loguru import logger
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from tqdm import tqdm
 
 from floodsense.utils.config import ProcessorConfig
@@ -76,8 +76,8 @@ class ImageProcessor:
                 img.save(output_path, quality=95, optimize=True)
                 return output_path
 
-        except Exception as e:
-            logger.error(f"Failed to process {image_path}: {e}")
+        except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as e:
+            logger.exception(f"Failed to process {image_path}: {e}")
             return None
 
     def check_blur(
@@ -107,8 +107,8 @@ class ImageProcessor:
 
             return laplacian_var >= threshold
 
-        except Exception as e:
-            logger.error(f"Failed to check blur for {image_path}: {e}")
+        except (cv2.error, OSError) as e:
+            logger.exception(f"Failed to check blur for {image_path}: {e}")
             return False
 
     def calculate_phash(self, image_path: Path) -> Optional[str]:
@@ -125,8 +125,8 @@ class ImageProcessor:
             from imagehash import phash
             with Image.open(image_path) as img:
                 return str(phash(img))
-        except Exception as e:
-            logger.error(f"Failed to calculate pHash for {image_path}: {e}")
+        except (OSError, ValueError) as e:
+            logger.exception(f"Failed to calculate pHash for {image_path}: {e}")
             return None
 
     def deduplicate(

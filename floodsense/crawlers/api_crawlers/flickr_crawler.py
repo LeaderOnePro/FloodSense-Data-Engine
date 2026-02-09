@@ -9,6 +9,7 @@ License: Various CC licenses
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import requests
 from loguru import logger
 
 from floodsense.crawlers.api_crawlers.base_api_crawler import BaseAPICrawler
@@ -240,8 +241,8 @@ class FlickrCrawler(BaseAPICrawler):
                     )
                     break
 
-            except Exception as e:
-                logger.error(f"Flickr API request failed: {e}")
+            except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+                logger.exception(f"Flickr API request failed: {e}")
                 break
 
             images = self._parse_search_response(response_data)

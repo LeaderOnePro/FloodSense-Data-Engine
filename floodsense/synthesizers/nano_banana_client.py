@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 from io import BytesIO
 
 import google.generativeai as genai
+from google.api_core.exceptions import GoogleAPIError
 from loguru import logger
 from PIL import Image
 from tqdm import tqdm
@@ -88,7 +89,7 @@ class NanoBananaClient:
                 else:
                     logger.warning(f"No image data in response: {response}")
 
-            except Exception as e:
+            except (GoogleAPIError, ValueError, OSError) as e:
                 logger.warning(
                     f"Generation failed (attempt {attempt + 1}/{self.config.max_retries}): {e}"
                 )
@@ -143,8 +144,8 @@ class NanoBananaClient:
                     else:
                         logger.warning(f"Failed to generate image for prompt {idx}")
 
-                except Exception as e:
-                    logger.error(f"Error processing prompt {idx}: {e}")
+                except (GoogleAPIError, ValueError, OSError) as e:
+                    logger.exception(f"Error processing prompt {idx}: {e}")
 
                 pbar.update(1)
 

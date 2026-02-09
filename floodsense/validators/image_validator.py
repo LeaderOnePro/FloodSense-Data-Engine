@@ -19,6 +19,10 @@ except ImportError:
     logger.warning("transformers or torch not installed. CLIP validation will be disabled.")
     CLIP_AVAILABLE = False
 
+_TORCH_ERRORS: tuple = (RuntimeError, OSError, ValueError)
+if CLIP_AVAILABLE and hasattr(torch.cuda, "OutOfMemoryError"):
+    _TORCH_ERRORS = (*_TORCH_ERRORS, torch.cuda.OutOfMemoryError)
+
 
 class ImageValidator:
     """
@@ -93,8 +97,8 @@ class ImageValidator:
             self.clip_model = CLIPModel.from_pretrained(model_name).to(self.device)
             self.clip_processor = CLIPProcessor.from_pretrained(model_name)
             logger.info("CLIP model loaded successfully")
-        except Exception as e:
-            logger.error(f"Failed to load CLIP model: {e}")
+        except _TORCH_ERRORS as e:
+            logger.exception(f"Failed to load CLIP model: {e}")
             self.enable_clip = False
 
     def validate(
@@ -211,8 +215,8 @@ class ImageValidator:
 
             return True, scores
 
-        except Exception as e:
-            logger.error(f"Error in heuristic check: {e}")
+        except (cv2.error, OSError) as e:
+            logger.exception(f"Error in heuristic check: {e}")
             return False, scores
 
     def _clip_check(self, image_path: Path, keywords: List[str]) -> Tuple[bool, dict]:
@@ -269,8 +273,8 @@ class ImageValidator:
 
             return is_valid, scores
 
-        except Exception as e:
-            logger.error(f"Error in CLIP check: {e}")
+        except _TORCH_ERRORS as e:
+            logger.exception(f"Error in CLIP check: {e}")
             return False, scores
 
     def validate_batch(
@@ -375,8 +379,8 @@ class ImageValidator:
                 ]
                 results.extend(batch_results)
 
-            except Exception as e:
-                logger.error(f"Error in batch CLIP check: {e}")
+            except _TORCH_ERRORS as e:
+                logger.exception(f"Error in batch CLIP check: {e}")
                 results.extend([False] * len(batch_paths))
 
         return results

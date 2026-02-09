@@ -13,6 +13,7 @@ from loguru import logger
 from tqdm import tqdm
 
 from floodsense.crawlers.base import BaseCrawler
+from floodsense.utils.file_utils import FileUtils
 
 
 class VideoCrawler(BaseCrawler):
@@ -50,7 +51,7 @@ class VideoCrawler(BaseCrawler):
             urls = self._search_videos(keyword, max_results, platform)
             logger.info(f"Found {len(urls)} video URLs for '{keyword}'")
 
-            keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
+            keyword_dir = self.output_dir / FileUtils.sanitize_keyword(keyword)
             keyword_dir.mkdir(parents=True, exist_ok=True)
 
             paths = self._download_videos(urls, keyword_dir, keyword)
@@ -102,8 +103,8 @@ class VideoCrawler(BaseCrawler):
                             # Build YouTube URL from video ID
                             urls.append(f"https://www.youtube.com/watch?v={entry['id']}")
 
-        except Exception as e:
-            logger.error(f"Failed to search videos for '{keyword}': {e}")
+        except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as e:
+            logger.exception(f"Failed to search videos for '{keyword}': {e}")
 
         logger.info(f"Found {len(urls)} videos for '{keyword}'")
         return urls
@@ -137,8 +138,8 @@ class VideoCrawler(BaseCrawler):
                     filepath = self._download_single_video(url, output_dir)
                     if filepath:
                         downloaded_paths.append(filepath)
-                except Exception as e:
-                    logger.error(f"Failed to download video {url}: {e}")
+                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError, OSError) as e:
+                    logger.exception(f"Failed to download video {url}: {e}")
                 pbar.update(1)
 
         return downloaded_paths
@@ -184,26 +185,10 @@ class VideoCrawler(BaseCrawler):
                 if info:
                     filename = ydl.prepare_filename(info)
                     return Path(filename)
-        except Exception as e:
-            logger.error(f"Failed to download video {url}: {e}")
+        except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError, OSError) as e:
+            logger.exception(f"Failed to download video {url}: {e}")
 
         return None
-
-    @staticmethod
-    def _sanitize_keyword(keyword: str) -> str:
-        """
-        Sanitize keyword for use as directory name.
-
-        Args:
-            keyword: Raw keyword string.
-
-        Returns:
-            Sanitized keyword.
-        """
-        import re
-        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
-        sanitized = sanitized.strip().replace(" ", "_")
-        return sanitized
 
     def get_video_urls(self, keyword: str, max_results: int = 100) -> List[str]:
         """

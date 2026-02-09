@@ -15,8 +15,15 @@ from loguru import logger
 from tqdm import tqdm
 
 from floodsense.crawlers.base import BaseCrawler
-from floodsense.utils.file_utils import CheckpointManager
+from floodsense.utils.file_utils import CheckpointManager, FileUtils
 from floodsense.validators.image_validator import ImageValidator
+
+try:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+except ImportError:
+    PlaywrightError = OSError
+    PlaywrightTimeoutError = TimeoutError
 
 
 class ImageSpider(BaseCrawler):
@@ -65,7 +72,7 @@ class ImageSpider(BaseCrawler):
             urls = self.get_image_urls(keyword, max_results=max_results)
             logger.info(f"Found {len(urls)} image URLs for '{keyword}'")
 
-            keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
+            keyword_dir = self.output_dir / FileUtils.sanitize_keyword(keyword)
             keyword_dir.mkdir(parents=True, exist_ok=True)
 
             paths = self._download_images(urls, keyword_dir, keyword, keywords)
@@ -133,13 +140,13 @@ class ImageSpider(BaseCrawler):
                         if see_more.is_visible(timeout=500):
                             see_more.click()
                             time.sleep(1)
-                    except Exception:
+                    except (PlaywrightTimeoutError, PlaywrightError):
                         pass
 
                 logger.info(f"Extracted {len(urls)} URLs after {scroll_count} scrolls")
 
-            except Exception as e:
-                logger.error(f"Playwright error: {e}")
+            except (PlaywrightError, PlaywrightTimeoutError, OSError) as e:
+                logger.exception(f"Playwright error: {e}")
             finally:
                 browser.close()
 
@@ -272,8 +279,8 @@ class ImageSpider(BaseCrawler):
                             downloaded_paths.append(result)
                             if self.checkpoint_manager:
                                 self.checkpoint_manager.add_completed(url)
-                    except Exception as e:
-                        logger.error(f"Failed to download {url}: {e}")
+                    except (requests.exceptions.RequestException, OSError, ValueError) as e:
+                        logger.exception(f"Failed to download {url}: {e}")
                     pbar.update(1)
 
         return downloaded_paths
@@ -323,10 +330,10 @@ class ImageSpider(BaseCrawler):
 
             # Verify file is valid image
             try:
-                from PIL import Image
+                from PIL import Image, UnidentifiedImageError
                 with Image.open(filepath) as img:
                     img.verify()
-            except Exception as e:
+            except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as e:
                 logger.warning(f"Invalid image file {filepath}: {e}")
                 filepath.unlink()
                 return None
@@ -341,25 +348,9 @@ class ImageSpider(BaseCrawler):
 
             return filepath
 
-        except Exception as e:
-            logger.error(f"Error downloading {url}: {e}")
+        except (requests.exceptions.RequestException, OSError) as e:
+            logger.exception(f"Error downloading {url}: {e}")
             return None
-
-    @staticmethod
-    def _sanitize_keyword(keyword: str) -> str:
-        """
-        Sanitize keyword for use as directory name.
-
-        Args:
-            keyword: Raw keyword string.
-
-        Returns:
-            Sanitized keyword.
-        """
-        # Remove special characters and replace spaces with underscores
-        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
-        sanitized = sanitized.strip().replace(" ", "_")
-        return sanitized
 
     @staticmethod
     def _get_extension_from_url(url: str) -> Optional[str]:

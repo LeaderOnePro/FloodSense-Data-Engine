@@ -9,6 +9,7 @@ License: Various CC licenses (CC-BY-SA, CC0, etc.)
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import requests
 from loguru import logger
 
 from floodsense.crawlers.api_crawlers.base_api_crawler import BaseAPICrawler
@@ -194,8 +195,8 @@ class WikimediaCrawler(BaseAPICrawler):
                 response.raise_for_status()
                 response_data = response.json()
 
-            except Exception as e:
-                logger.error(f"Wikimedia API request failed: {e}")
+            except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+                logger.exception(f"Wikimedia API request failed: {e}")
                 break
 
             images = self._parse_search_response(response_data)

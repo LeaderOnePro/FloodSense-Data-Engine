@@ -14,6 +14,7 @@ from loguru import logger
 
 from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.config import CrawlerConfig
+from floodsense.utils.file_utils import FileUtils
 from floodsense.utils.proxy import ProxyManager
 
 
@@ -264,7 +265,7 @@ class NASACrawler(BaseCrawler):
             if not urls:
                 continue
 
-            keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
+            keyword_dir = self.output_dir / FileUtils.sanitize_keyword(keyword)
             keyword_dir.mkdir(parents=True, exist_ok=True)
 
             for idx, url in enumerate(urls):
@@ -273,21 +274,6 @@ class NASACrawler(BaseCrawler):
                     downloaded_paths.append(filepath)
 
         return downloaded_paths
-
-    @staticmethod
-    def _sanitize_keyword(keyword: str) -> str:
-        """
-        Sanitize keyword for use as directory name.
-
-        Args:
-            keyword: Raw keyword string.
-
-        Returns:
-            Sanitized keyword.
-        """
-        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
-        sanitized = sanitized.strip().replace(" ", "_")
-        return sanitized
 
     def get_category_images(
         self, category: str = "floods", max_results: int = 100

@@ -10,10 +10,12 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import requests
 from loguru import logger
 
 from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.config import CrawlerConfig
+from floodsense.utils.file_utils import FileUtils
 from floodsense.utils.proxy import ProxyManager
 
 
@@ -213,8 +215,8 @@ class BaseAPICrawler(BaseCrawler):
             response.raise_for_status()
             return response.json()
 
-        except Exception as e:
-            logger.error(f"API request failed for {self.source_name}: {e}")
+        except (requests.exceptions.RequestException, ValueError) as e:
+            logger.exception(f"API request failed for {self.source_name}: {e}")
             return None
 
     def get_image_urls(self, keyword: str, max_results: int = 100) -> List[str]:
@@ -286,7 +288,7 @@ class BaseAPICrawler(BaseCrawler):
             if not urls:
                 continue
 
-            keyword_dir = self.output_dir / self._sanitize_keyword(keyword)
+            keyword_dir = self.output_dir / FileUtils.sanitize_keyword(keyword)
             keyword_dir.mkdir(parents=True, exist_ok=True)
 
             for idx, url in enumerate(urls):
@@ -295,19 +297,3 @@ class BaseAPICrawler(BaseCrawler):
                     downloaded_paths.append(filepath)
 
         return downloaded_paths
-
-    @staticmethod
-    def _sanitize_keyword(keyword: str) -> str:
-        """
-        Sanitize keyword for use as directory name.
-
-        Args:
-            keyword: Raw keyword string.
-
-        Returns:
-            Sanitized keyword.
-        """
-        import re
-        sanitized = re.sub(r'[<>:"/\\|?*]', "", keyword)
-        sanitized = sanitized.strip().replace(" ", "_")
-        return sanitized
