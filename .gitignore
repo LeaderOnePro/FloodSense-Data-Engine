@@ -25,6 +25,10 @@ venv/
 env/
 ENV/
 
+# uv
+uv.lock
+.python-version
+
 # Data files
 data/
 
