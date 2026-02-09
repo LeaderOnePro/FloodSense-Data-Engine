@@ -5,13 +5,14 @@ Generates flood-related images using generative AI models.
 """
 
 import json
+import random
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
-from io import BytesIO
+from typing import List, Optional
 
-import google.generativeai as genai
-from google.api_core.exceptions import GoogleAPIError
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError, ClientError, ServerError
 from loguru import logger
 from PIL import Image
 from tqdm import tqdm
@@ -19,7 +20,7 @@ from tqdm import tqdm
 from floodsense.utils.config import SynthesizerConfig
 
 
-class NanoBananaClient:
+class ImageGenClient:
     """
     Client for generating synthetic flood images using Google Gemini API.
     """
@@ -31,7 +32,7 @@ class NanoBananaClient:
         config: Optional[SynthesizerConfig] = None,
     ) -> None:
         """
-        Initialize NanoBananaClient.
+        Initialize ImageGenClient.
 
         Args:
             config: Synthesizer configuration.
@@ -44,11 +45,9 @@ class NanoBananaClient:
                 "or provide in config."
             )
 
-        # Initialize Gemini
-        genai.configure(api_key=self.config.api_key)
-        self.model = genai.GenerativeModel(self.config.model)
+        self.client = genai.Client(api_key=self.config.api_key)
 
-        logger.info(f"Initialized NanoBananaClient with model: {self.config.model}")
+        logger.info(f"Initialized ImageGenClient with model: {self.config.model}")
 
     def generate_image(
         self,
@@ -65,40 +64,38 @@ class NanoBananaClient:
         Returns:
             Generated PIL Image or None if failed.
         """
-        # Enhance prompt
         if enhance_prompt:
             prompt = prompt + self.PROMPT_SUFFIX
 
-        # Retry logic
         for attempt in range(self.config.max_retries):
             try:
                 logger.debug(f"Generating image (attempt {attempt + 1}): {prompt}")
 
-                response = self.model.generate_content(
-                    prompt,
-                    generation_config=genai.types.GenerationConfig(
-                        response_mime_type="image/png",
+                response = self.client.models.generate_content(
+                    model=self.config.model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE"],
                     ),
                 )
 
                 # Extract image from response
-                if response.parts and hasattr(response.parts[0], "inline_data"):
-                    image_data = response.parts[0].inline_data.data
-                    image = Image.open(BytesIO(image_data))
-                    logger.debug("Image generated successfully")
-                    return image
-                else:
-                    logger.warning(f"No image data in response: {response}")
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data is not None:
+                        image = part.as_image()
+                        logger.debug("Image generated successfully")
+                        return image
 
-            except (GoogleAPIError, ValueError, OSError) as e:
+                logger.warning("No image data in response")
+
+            except (APIError, ClientError, ServerError, ValueError, OSError) as e:
                 logger.warning(
                     f"Generation failed (attempt {attempt + 1}/{self.config.max_retries}): {e}"
                 )
 
                 if attempt < self.config.max_retries - 1:
-                    # Exponential backoff with jitter
                     delay = self.config.retry_delay * (2**attempt)
-                    delay += time.uniform(0, 1)
+                    delay += random.uniform(0, 1)
                     time.sleep(delay)
 
         logger.error(f"All retry attempts failed for prompt: {prompt}")
@@ -136,7 +133,6 @@ class NanoBananaClient:
                     image = self.generate_image(prompt, enhance_prompt)
 
                     if image:
-                        # Save image
                         filename = f"{prefix}_{idx:05d}.png"
                         filepath = output_dir / filename
                         image.save(filepath, quality=95)
@@ -145,7 +141,7 @@ class NanoBananaClient:
                     else:
                         logger.warning(f"Failed to generate image for prompt {idx}")
 
-                except (GoogleAPIError, ValueError, OSError) as e:
+                except (APIError, ClientError, ServerError, ValueError, OSError) as e:
                     logger.exception(f"Error processing prompt {idx}: {e}")
 
                 pbar.update(1)

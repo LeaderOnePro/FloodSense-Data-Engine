@@ -140,7 +140,7 @@ FloodSense-Data-Engine/
 │   │   ├── video_processor.py     # 场景检测帧提取
 │   │   └── cleaning_pipeline.py   # 流水线调度器
 │   ├── synthesizers/
-│   │   └── nano_banana_client.py  # Gemini API 客户端
+│   │   └── img_gen_models_client.py  # Gemini API 客户端
 │   ├── validators/
 │   │   ├── base_validator.py      # 策略接口
 │   │   └── image_validator.py     # 启发式 + CLIP 验证器

@@ -58,7 +58,7 @@ from floodsense.crawlers import (  # noqa: F401
 from floodsense.processors.cleaning_pipeline import CleaningPipeline
 from floodsense.validators.image_validator import ImageValidator
 
-# NanoBananaClient depends on google.generativeai which may not be installed.
+# ImageGenClient depends on google.generativeai which may not be installed.
 # Import lazily inside SynthesizePane._run_synth() instead.
 
 # ---------------------------------------------------------------------------
@@ -511,8 +511,8 @@ class SynthesizePane(VerticalScroll):
         cfg: Config = self.app.config  # type: ignore[attr-defined]
 
         try:
-            from floodsense.synthesizers.nano_banana_client import NanoBananaClient
-            client = NanoBananaClient(config=cfg.synthesizer)
+            from floodsense.synthesizers.img_gen_models_client import ImageGenClient
+            client = ImageGenClient(config=cfg.synthesizer)
 
             if prompts_file:
                 self.app.call_from_thread(

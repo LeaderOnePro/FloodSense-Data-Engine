@@ -11,7 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from floodsense.synthesizers.nano_banana_client import NanoBananaClient
+from floodsense.synthesizers.img_gen_models_client import ImageGenClient
 from floodsense.utils.config import Config
 
 
@@ -56,7 +56,7 @@ def main():
     config = Config.load(args.config)
 
     # Initialize client
-    client = NanoBananaClient(config=config.synthesizer)
+    client = ImageGenClient(config=config.synthesizer)
 
     # Generate images
     logger.info(f"Generating images from prompts in {args.prompts}")

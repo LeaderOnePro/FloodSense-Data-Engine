@@ -140,7 +140,7 @@ FloodSense-Data-Engine/
 │   │   ├── video_processor.py     # Scene-based frame extraction
 │   │   └── cleaning_pipeline.py   # Orchestrator
 │   ├── synthesizers/
-│   │   └── nano_banana_client.py  # Gemini API client
+│   │   └── img_gen_models_client.py  # Gemini API client
 │   ├── validators/
 │   │   ├── base_validator.py      # Strategy interface
 │   │   └── image_validator.py     # Heuristic + CLIP validator
