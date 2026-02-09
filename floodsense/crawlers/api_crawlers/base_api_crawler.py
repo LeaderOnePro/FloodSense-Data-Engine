@@ -4,6 +4,7 @@ Base API crawler with rate limiting functionality.
 Provides foundation for API-based image crawlers.
 """
 
+import threading
 import time
 from abc import abstractmethod
 from pathlib import Path
@@ -31,23 +32,29 @@ class RateLimiter:
         self.requests_per_hour = requests_per_hour
         self.requests: List[float] = []
         self.window_seconds = 3600  # 1 hour window
+        self._lock = threading.Lock()
 
     def wait_if_needed(self) -> None:
         """Wait if rate limit would be exceeded."""
-        current_time = time.time()
+        with self._lock:
+            current_time = time.time()
 
-        # Remove requests outside the window
-        self.requests = [
-            t for t in self.requests if current_time - t < self.window_seconds
-        ]
+            # Remove requests outside the window
+            self.requests = [
+                t for t in self.requests if current_time - t < self.window_seconds
+            ]
 
-        if len(self.requests) >= self.requests_per_hour:
-            # Calculate wait time until oldest request falls out of window
-            oldest_request = min(self.requests)
-            wait_time = self.window_seconds - (current_time - oldest_request)
-            if wait_time > 0:
-                logger.info(f"Rate limit reached. Waiting {wait_time:.1f} seconds...")
-                time.sleep(wait_time)
+            if len(self.requests) >= self.requests_per_hour:
+                # Calculate wait time until oldest request falls out of window
+                oldest_request = min(self.requests)
+                wait_time = self.window_seconds - (current_time - oldest_request)
+            else:
+                wait_time = 0
+
+        if wait_time > 0:
+            logger.info(f"Rate limit reached. Waiting {wait_time:.1f} seconds...")
+            time.sleep(wait_time)
+            with self._lock:
                 # Clean up after waiting
                 self.requests = [
                     t
@@ -57,15 +64,17 @@ class RateLimiter:
 
     def record_request(self) -> None:
         """Record a request timestamp."""
-        self.requests.append(time.time())
+        with self._lock:
+            self.requests.append(time.time())
 
     def get_remaining_requests(self) -> int:
         """Get number of remaining requests in current window."""
-        current_time = time.time()
-        self.requests = [
-            t for t in self.requests if current_time - t < self.window_seconds
-        ]
-        return max(0, self.requests_per_hour - len(self.requests))
+        with self._lock:
+            current_time = time.time()
+            self.requests = [
+                t for t in self.requests if current_time - t < self.window_seconds
+            ]
+            return max(0, self.requests_per_hour - len(self.requests))
 
 
 class BaseAPICrawler(BaseCrawler):
