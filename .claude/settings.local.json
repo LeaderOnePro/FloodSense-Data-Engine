@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(.venv/Scripts/python:*)",
-      "Bash(tasklist:*)"
-    ]
-  }
-}

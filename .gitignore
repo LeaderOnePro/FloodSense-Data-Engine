@@ -26,12 +26,10 @@ env/
 ENV/
 
 # Data files
-data/raw/*
-data/processed/*
-data/synthetic/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/synthetic/.gitkeep
+data/
+
+# Claude Code
+.claude/
 
 # IDE
 .vscode/
