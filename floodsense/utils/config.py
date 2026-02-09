@@ -41,13 +41,19 @@ class ProcessorConfig(BaseModel):
         default=(1280, 720), description="Minimum acceptable resolution"
     )
     blur_threshold: float = Field(
-        default=100.0, description="Laplacian variance threshold for blur detection"
+        default=100.0,
+        description="Laplacian variance threshold for blur detection. "
+        "Images with variance below this are blurry. Range: 50-200",
     )
     scene_threshold: float = Field(
-        default=30.0, description="Scene change detection threshold"
+        default=30.0,
+        description="Scene change detection threshold. "
+        "Histogram correlation diff (0-100). Higher = fewer keyframes. Range: 20-50",
     )
     phash_threshold: int = Field(
-        default=8, description="pHash hamming distance threshold for deduplication"
+        default=8,
+        description="pHash hamming distance threshold for deduplication. "
+        "Images with distance <= this are duplicates. Range: 5-15",
     )
 
 

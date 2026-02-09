@@ -12,11 +12,6 @@ import requests
 from loguru import logger
 
 from floodsense.crawlers.base import BaseCrawler
-from floodsense.crawlers.api_crawlers.unsplash_crawler import UnsplashCrawler
-from floodsense.crawlers.api_crawlers.pexels_crawler import PexelsCrawler
-from floodsense.crawlers.api_crawlers.flickr_crawler import FlickrCrawler
-from floodsense.crawlers.api_crawlers.wikimedia_crawler import WikimediaCrawler
-from floodsense.crawlers.satellite_crawlers.nasa_crawler import NASACrawler
 from floodsense.utils.config import Config, CrawlerConfig
 from floodsense.utils.file_utils import FileUtils
 from floodsense.utils.proxy import ProxyManager
@@ -32,15 +27,6 @@ class MultiSourceCrawler(BaseCrawler):
     - Auto-failover on source errors
     - URL deduplication across sources
     """
-
-    # Source registry with crawler classes and their priorities
-    SOURCE_REGISTRY: Dict[str, Type[BaseCrawler]] = {
-        "unsplash": UnsplashCrawler,
-        "pexels": PexelsCrawler,
-        "nasa": NASACrawler,
-        "wikimedia": WikimediaCrawler,
-        "flickr": FlickrCrawler,
-    }
 
     def __init__(
         self,
@@ -84,7 +70,9 @@ class MultiSourceCrawler(BaseCrawler):
         else:
             api_sources = None
 
-        for source_name, crawler_class in self.SOURCE_REGISTRY.items():
+        source_registry = BaseCrawler.get_registry()
+
+        for source_name, crawler_class in source_registry.items():
             # Skip if specific sources requested and this isn't one
             if sources and source_name not in sources:
                 continue
@@ -314,12 +302,13 @@ class MultiSourceCrawler(BaseCrawler):
             Dictionary with source status information.
         """
         status = {}
-        for source_name in self.SOURCE_REGISTRY:
+        source_registry = BaseCrawler.get_registry()
+        for source_name in source_registry:
             is_enabled = source_name in self.enabled_sources
             status[source_name] = {
                 "enabled": is_enabled,
                 "priority": self.source_priorities.get(source_name),
-                "crawler_type": self.SOURCE_REGISTRY[source_name].__name__,
+                "crawler_type": source_registry[source_name].__name__,
             }
 
             # Add rate limiter info if available

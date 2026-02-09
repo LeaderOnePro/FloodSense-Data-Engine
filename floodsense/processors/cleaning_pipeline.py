@@ -8,7 +8,7 @@ blur detection, deduplication, and reporting.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -16,6 +16,7 @@ from floodsense.processors.image_processor import ImageProcessor
 from floodsense.processors.video_processor import VideoProcessor
 from floodsense.utils.config import ProcessorConfig
 from floodsense.utils.file_utils import FileUtils, ProgressTracker
+from floodsense.validators.image_validator import ImageValidator
 
 
 class CleaningPipeline:
@@ -26,16 +27,19 @@ class CleaningPipeline:
     def __init__(
         self,
         config: Optional[ProcessorConfig] = None,
+        validator: Optional[ImageValidator] = None,
     ) -> None:
         """
         Initialize CleaningPipeline.
 
         Args:
             config: Processor configuration.
+            validator: Optional image validator for content filtering.
         """
         self.config = config or ProcessorConfig()
         self.image_processor = ImageProcessor(config)
         self.video_processor = VideoProcessor(config)
+        self.validator = validator
 
     def run(
         self,
@@ -44,7 +48,7 @@ class CleaningPipeline:
         extract_video_frames: bool = True,
         remove_blur: bool = True,
         deduplicate: bool = True,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Run the complete cleaning pipeline.
 
@@ -65,7 +69,7 @@ class CleaningPipeline:
         images_output_dir = output_dir / "images"
         videos_output_dir = output_dir / "video_frames"
 
-        stats: Dict[str, any] = {
+        stats: Dict[str, Any] = {
             "start_time": start_time.isoformat(),
             "input_dir": str(input_dir),
             "output_dir": str(output_dir),
@@ -112,7 +116,7 @@ class CleaningPipeline:
         output_dir: Path,
         remove_blur: bool,
         deduplicate: bool,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Process all images in input directory.
 
@@ -141,13 +145,24 @@ class CleaningPipeline:
             deduplicate=deduplicate,
         )
 
+        # Content validation
+        if self.validator and processed_paths:
+            valid_paths = []
+            for img_path in processed_paths:
+                if self.validator.validate(img_path, keywords=[]):
+                    valid_paths.append(img_path)
+                else:
+                    img_path.unlink(missing_ok=True)
+            stats["removed_validation"] = len(processed_paths) - len(valid_paths)
+            stats["final"] = len(valid_paths)
+
         return stats
 
     def _process_videos(
         self,
         input_dir: Path,
         output_dir: Path,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Process all videos in input directory.
 
@@ -167,20 +182,15 @@ class CleaningPipeline:
             return {"total": 0, "processed": 0, "final": 0}
 
         # Extract frames
-        extracted_frames = self.video_processor.process_video_directory(
+        extracted_frames, video_stats = self.video_processor.process_directory(
             input_dir,
             output_dir,
         )
 
-        stats = {
-            "total_videos": len(video_paths),
-            "total_frames_extracted": len(extracted_frames),
-        }
-
-        return stats
+        return video_stats
 
     @staticmethod
-    def _combine_stats(stats: Dict[str, any]) -> Dict[str, any]:
+    def _combine_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
         """
         Combine statistics from different processing steps.
 
@@ -214,7 +224,7 @@ class CleaningPipeline:
         return combined
 
     @staticmethod
-    def _save_report(stats: Dict[str, any], report_path: Path) -> None:
+    def _save_report(stats: Dict[str, Any], report_path: Path) -> None:
         """
         Save cleaning report to JSON file.
 
@@ -228,7 +238,7 @@ class CleaningPipeline:
         logger.info(f"Report saved to {report_path}")
 
     @staticmethod
-    def _print_summary(stats: Dict[str, any]) -> None:
+    def _print_summary(stats: Dict[str, Any]) -> None:
         """
         Print summary of cleaning pipeline.
 

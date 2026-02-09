@@ -16,7 +16,6 @@ from tqdm import tqdm
 
 from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.file_utils import CheckpointManager, FileUtils
-from floodsense.validators.image_validator import ImageValidator
 
 try:
     from playwright.sync_api import Error as PlaywrightError
@@ -36,11 +35,10 @@ class ImageSpider(BaseCrawler):
     # Image URL patterns for different sources
     IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 
-    def __init__(self, *args, validator: Optional[ImageValidator] = None, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         """Initialize ImageSpider."""
         super().__init__(*args, **kwargs)
         self.checkpoint_manager: Optional[CheckpointManager] = None
-        self.validator = validator
 
     def crawl(
         self,
@@ -337,14 +335,6 @@ class ImageSpider(BaseCrawler):
                 logger.warning(f"Invalid image file {filepath}: {e}")
                 filepath.unlink()
                 return None
-
-            # Validate content if validator is enabled
-            if self.validator and keywords:
-                is_valid = self.validator.validate(filepath, keywords)
-                if not is_valid:
-                    logger.debug(f"Image failed content validation: {filepath}")
-                    filepath.unlink()
-                    return None
 
             return filepath
 

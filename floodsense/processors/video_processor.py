@@ -7,14 +7,16 @@ Uses scene detection to extract keyframes and blur detection for quality control
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 from tqdm import tqdm
 
+from floodsense.processors.base_processor import BaseProcessor
 from floodsense.utils.config import ProcessorConfig
+from floodsense.utils.file_utils import FileUtils
 
 
-class VideoProcessor:
+class VideoProcessor(BaseProcessor):
     """
     Smart video frame extractor with scene detection and quality control.
     """
@@ -28,7 +30,7 @@ class VideoProcessor:
         Args:
             config: Processor configuration.
         """
-        self.config = config or ProcessorConfig()
+        super().__init__(config)
 
     def extract_keyframes(
         self,
@@ -235,33 +237,36 @@ class VideoProcessor:
         """
         return cv2.resize(frame, target_size, interpolation=cv2.INTER_LANCZOS4)
 
-    def process_video_directory(
+    def process_directory(
         self,
-        video_dir: Path,
+        input_dir: Path,
         output_dir: Path,
         **kwargs,
-    ) -> List[Path]:
+    ) -> Tuple[List[Path], Dict[str, Any]]:
         """
         Process all videos in a directory.
 
         Args:
-            video_dir: Directory containing videos.
+            input_dir: Directory containing videos.
             output_dir: Directory to save extracted frames.
             **kwargs: Additional arguments for extract_keyframes.
 
         Returns:
-            List of paths to all extracted frames.
+            Tuple of (extracted frame paths, statistics).
         """
-        from floodsense.utils.file_utils import FileUtils
-
         all_frames: List[Path] = []
 
-        video_paths = list(FileUtils.iter_videos(video_dir))
-        logger.info(f"Found {len(video_paths)} videos in {video_dir}")
+        video_paths = list(FileUtils.iter_videos(input_dir))
+        logger.info(f"Found {len(video_paths)} videos in {input_dir}")
 
         for video_path in tqdm(video_paths, desc="Processing videos"):
             video_output_dir = output_dir / video_path.stem
             frames = self.extract_keyframes(video_path, video_output_dir, **kwargs)
             all_frames.extend(frames)
 
-        return all_frames
+        stats = {
+            "total_videos": len(video_paths),
+            "total_frames_extracted": len(all_frames),
+        }
+
+        return all_frames, stats

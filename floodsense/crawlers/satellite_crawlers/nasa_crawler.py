@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 from typing import List, Optional, Set
 
+from bs4 import BeautifulSoup
 from loguru import logger
 
 from floodsense.crawlers.base import BaseCrawler
@@ -18,6 +19,7 @@ from floodsense.utils.file_utils import FileUtils
 from floodsense.utils.proxy import ProxyManager
 
 
+@BaseCrawler.register("nasa")
 class NASACrawler(BaseCrawler):
     """
     Crawler for NASA Earth Observatory imagery.
@@ -118,8 +120,6 @@ class NASACrawler(BaseCrawler):
         Returns:
             List of image URLs.
         """
-        from bs4 import BeautifulSoup
-
         urls: List[str] = []
         soup = BeautifulSoup(html, "html.parser")
 
@@ -176,8 +176,6 @@ class NASACrawler(BaseCrawler):
         Returns:
             Image URL or None.
         """
-        from bs4 import BeautifulSoup
-
         soup = BeautifulSoup(html, "html.parser")
 
         # Look for the main image in various locations

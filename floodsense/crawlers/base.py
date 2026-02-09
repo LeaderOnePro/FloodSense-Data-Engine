@@ -8,7 +8,7 @@ import random
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 import requests
 from loguru import logger
@@ -24,6 +24,21 @@ class BaseCrawler(ABC):
     Provides common functionality like session management,
     retry logic, and header spoofing.
     """
+
+    _registry: Dict[str, Type["BaseCrawler"]] = {}
+
+    @classmethod
+    def register(cls, name: str):
+        """Decorator to register a crawler class."""
+        def decorator(crawler_cls):
+            cls._registry[name] = crawler_cls
+            return crawler_cls
+        return decorator
+
+    @classmethod
+    def get_registry(cls) -> Dict[str, Type["BaseCrawler"]]:
+        """Return a copy of the crawler registry."""
+        return dict(cls._registry)
 
     DEFAULT_USER_AGENTS = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

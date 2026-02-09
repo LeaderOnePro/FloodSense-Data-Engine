@@ -12,10 +12,12 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from floodsense.crawlers.api_crawlers.base_api_crawler import BaseAPICrawler
+from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.config import CrawlerConfig
 from floodsense.utils.proxy import ProxyManager
 
 
+@BaseCrawler.register("unsplash")
 class UnsplashCrawler(BaseAPICrawler):
     """
     Crawler for Unsplash API.

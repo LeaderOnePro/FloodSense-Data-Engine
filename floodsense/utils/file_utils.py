@@ -6,7 +6,6 @@ Common operations for file handling, checkpointing, and progress tracking.
 
 import hashlib
 import json
-import pickle
 import re
 from datetime import datetime
 from pathlib import Path
@@ -151,8 +150,8 @@ class CheckpointManager:
             "task_name": self.task_name,
             "data": data,
         }
-        with open(self.checkpoint_file, "wb") as f:
-            pickle.dump(checkpoint, f)
+        with open(self.checkpoint_file, "w", encoding="utf-8") as f:
+            json.dump(checkpoint, f, ensure_ascii=False)
         logger.debug(f"Checkpoint saved: {self.checkpoint_file}")
 
     def load(self) -> Optional[Dict[str, Any]]:
@@ -166,13 +165,13 @@ class CheckpointManager:
             return None
 
         try:
-            with open(self.checkpoint_file, "rb") as f:
-                checkpoint = pickle.load(f)
+            with open(self.checkpoint_file, "r", encoding="utf-8") as f:
+                checkpoint = json.load(f)
             logger.info(
                 f"Checkpoint loaded from {checkpoint['timestamp']}: {self.checkpoint_file}"
             )
             return checkpoint["data"]
-        except (pickle.PickleError, KeyError) as e:
+        except (json.JSONDecodeError, KeyError) as e:
             logger.warning(f"Failed to load checkpoint: {e}")
             return None
 

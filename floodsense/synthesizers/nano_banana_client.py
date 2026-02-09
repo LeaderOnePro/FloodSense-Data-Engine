@@ -4,6 +4,7 @@ Synthetic data generator using Google Gemini API.
 Generates flood-related images using generative AI models.
 """
 
+import json
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -163,8 +164,6 @@ class NanoBananaClient:
         Returns:
             List of prompts.
         """
-        import json
-
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 

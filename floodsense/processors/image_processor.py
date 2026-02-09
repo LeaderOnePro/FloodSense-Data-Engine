@@ -12,11 +12,12 @@ from loguru import logger
 from PIL import Image, UnidentifiedImageError
 from tqdm import tqdm
 
+from floodsense.processors.base_processor import BaseProcessor
 from floodsense.utils.config import ProcessorConfig
 from floodsense.utils.file_utils import FileUtils
 
 
-class ImageProcessor:
+class ImageProcessor(BaseProcessor):
     """
     Image processor for quality control and deduplication.
     """
@@ -31,7 +32,7 @@ class ImageProcessor:
         Args:
             config: Processor configuration.
         """
-        self.config = config or ProcessorConfig()
+        super().__init__(config)
 
     def standardize_resolution(
         self,

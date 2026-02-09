@@ -2,6 +2,7 @@
 Image validator using CLIP model and heuristic rules.
 
 Combines fast heuristic filtering with accurate CLIP-based content verification.
+Uses a strategy pattern with pluggable BaseValidator implementations.
 """
 
 import cv2
@@ -10,6 +11,8 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 from PIL import Image
 from loguru import logger
+
+from floodsense.validators.base_validator import BaseValidator
 
 try:
     import torch
@@ -24,146 +27,30 @@ if CLIP_AVAILABLE and hasattr(torch.cuda, "OutOfMemoryError"):
     _TORCH_ERRORS = (*_TORCH_ERRORS, torch.cuda.OutOfMemoryError)
 
 
-class ImageValidator:
-    """
-    Image validator using CLIP model and heuristic rules.
+class HeuristicValidator(BaseValidator):
+    """Fast heuristic filtering based on image properties."""
 
-    Two-layer filtering:
-    1. Heuristic rules (fast, ~1ms/image)
-    2. CLIP similarity (accurate, ~100ms/image)
-    """
-
-    # Heuristic thresholds
     MIN_WIDTH = 200
     MIN_HEIGHT = 200
     MAX_ASPECT_RATIO = 4.0
-    MIN_BLUE_RATIO = 0.05  # Minimum blue color ratio (water indicator)
-    MAX_BLUE_RATIO = 0.95  # Maximum blue ratio (avoid solid blue images)
-    MIN_EDGE_DENSITY = 0.01  # Minimum edge density
+    MIN_BLUE_RATIO = 0.05
+    MAX_BLUE_RATIO = 0.95
+    MIN_EDGE_DENSITY = 0.01
 
-    # CLIP settings
-    DEFAULT_CLIP_THRESHOLD = 0.25
-    DEFAULT_CLIP_MODEL = "openai/clip-vit-base-patch32"
-
-    def __init__(
-        self,
-        clip_threshold: float = DEFAULT_CLIP_THRESHOLD,
-        clip_model_name: str = DEFAULT_CLIP_MODEL,
-        enable_heuristic: bool = True,
-        enable_clip: bool = True,
-        device: Optional[str] = None,
-    ) -> None:
+    def check(self, image_path: Path, keywords: List[str]) -> Tuple[bool, dict]:
         """
-        Initialize ImageValidator.
+        Validate image using heuristic rules.
 
-        Args:
-            clip_threshold: CLIP similarity threshold (0-1).
-            clip_model_name: CLIP model name.
-            enable_heuristic: Enable heuristic filtering.
-            enable_clip: Enable CLIP filtering.
-            device: Device to use (cuda, cpu, or auto).
-        """
-        self.clip_threshold = clip_threshold
-        self.enable_heuristic = enable_heuristic
-        self.enable_clip = enable_clip and CLIP_AVAILABLE
-
-        # Device selection
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
-
-        # Initialize CLIP model
-        self.clip_model: Optional[CLIPModel] = None
-        self.clip_processor: Optional[CLIPProcessor] = None
-
-        if self.enable_clip:
-            self._load_clip_model(clip_model_name)
-
-        logger.info(
-            f"ImageValidator initialized: heuristic={enable_heuristic}, "
-            f"clip={self.enable_clip}, device={self.device}"
-        )
-
-    def _load_clip_model(self, model_name: str) -> None:
-        """
-        Load CLIP model.
-
-        Args:
-            model_name: CLIP model name.
-        """
-        try:
-            logger.info(f"Loading CLIP model: {model_name}")
-            self.clip_model = CLIPModel.from_pretrained(model_name).to(self.device)
-            self.clip_processor = CLIPProcessor.from_pretrained(model_name)
-            logger.info("CLIP model loaded successfully")
-        except _TORCH_ERRORS as e:
-            logger.exception(f"Failed to load CLIP model: {e}")
-            self.enable_clip = False
-
-    def validate(
-        self,
-        image_path: Path,
-        keywords: List[str],
-        return_scores: bool = False,
-    ) -> bool | Tuple[bool, dict]:
-        """
-        Validate image against keywords.
+        Checks dimensions, aspect ratio, blue color ratio, and edge density.
 
         Args:
             image_path: Path to image.
-            keywords: List of keywords to match.
-            return_scores: Whether to return validation scores.
-
-        Returns:
-            True if image is valid, False otherwise.
-            If return_scores=True, returns (is_valid, scores_dict).
-        """
-        scores = {}
-
-        # First layer: Heuristic filtering
-        if self.enable_heuristic:
-            heuristic_valid, heuristic_scores = self._heuristic_check(image_path)
-            scores.update(heuristic_scores)
-
-            if not heuristic_valid:
-                logger.debug(f"Image failed heuristic check: {image_path}")
-                if return_scores:
-                    return False, scores
-                return False
-
-        # Second layer: CLIP filtering
-        if self.enable_clip:
-            clip_valid, clip_scores = self._clip_check(image_path, keywords)
-            scores.update(clip_scores)
-
-            if not clip_valid:
-                logger.debug(f"Image failed CLIP check: {image_path}")
-                if return_scores:
-                    return False, scores
-                return False
-
-        if return_scores:
-            return True, scores
-        return True
-
-    def _heuristic_check(self, image_path: Path) -> Tuple[bool, dict]:
-        """
-        Fast heuristic filtering.
-
-        Checks:
-        - Image dimensions
-        - Aspect ratio
-        - Color distribution (blue ratio for water detection)
-        - Edge density (texture complexity)
-
-        Args:
-            image_path: Path to image.
+            keywords: List of keywords (unused by heuristic).
 
         Returns:
             Tuple of (is_valid, scores_dict).
         """
-        scores = {}
+        scores: dict = {}
 
         try:
             img = cv2.imread(str(image_path))
@@ -173,7 +60,6 @@ class ImageValidator:
 
             height, width = img.shape[:2]
 
-            # Check dimensions
             scores["width"] = width
             scores["height"] = height
 
@@ -181,7 +67,6 @@ class ImageValidator:
                 logger.debug(f"Image too small: {width}x{height}")
                 return False, scores
 
-            # Check aspect ratio
             aspect_ratio = max(width, height) / min(width, height)
             scores["aspect_ratio"] = aspect_ratio
 
@@ -189,7 +74,6 @@ class ImageValidator:
                 logger.debug(f"Aspect ratio too extreme: {aspect_ratio}")
                 return False, scores
 
-            # Color analysis - blue ratio (water indicator)
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             blue_mask = cv2.inRange(hsv, np.array([100, 50, 50]), np.array([130, 255, 255]))
             blue_ratio = np.sum(blue_mask > 0) / (width * height)
@@ -203,7 +87,6 @@ class ImageValidator:
                 logger.debug(f"Blue ratio too high (solid image): {blue_ratio}")
                 return False, scores
 
-            # Edge density (texture complexity)
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             edges = cv2.Canny(gray, 100, 200)
             edge_density = np.sum(edges > 0) / (width * height)
@@ -219,9 +102,54 @@ class ImageValidator:
             logger.exception(f"Error in heuristic check: {e}")
             return False, scores
 
-    def _clip_check(self, image_path: Path, keywords: List[str]) -> Tuple[bool, dict]:
+
+class CLIPValidator(BaseValidator):
+    """CLIP-based content verification."""
+
+    DEFAULT_THRESHOLD = 0.25
+    DEFAULT_MODEL = "openai/clip-vit-base-patch32"
+
+    def __init__(
+        self,
+        threshold: float = DEFAULT_THRESHOLD,
+        model_name: str = DEFAULT_MODEL,
+        device: Optional[str] = None,
+        batch_size: int = 32,
+    ) -> None:
         """
-        CLIP-based content verification.
+        Initialize CLIPValidator.
+
+        Args:
+            threshold: CLIP similarity threshold (0-1).
+            model_name: CLIP model name.
+            device: Device to use (cuda, cpu, or auto).
+            batch_size: Batch size for CLIP inference.
+        """
+        self.threshold = threshold
+        self.batch_size = batch_size
+
+        if device is None:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
+
+        self.clip_model: Optional[CLIPModel] = None
+        self.clip_processor: Optional[CLIPProcessor] = None
+        self._load_model(model_name)
+
+    def _load_model(self, model_name: str) -> None:
+        """Load CLIP model."""
+        try:
+            logger.info(f"Loading CLIP model: {model_name}")
+            self.clip_model = CLIPModel.from_pretrained(model_name).to(self.device)
+            self.clip_processor = CLIPProcessor.from_pretrained(model_name)
+            logger.info("CLIP model loaded successfully")
+        except _TORCH_ERRORS as e:
+            logger.exception(f"Failed to load CLIP model: {e}")
+
+    def check(self, image_path: Path, keywords: List[str]) -> Tuple[bool, dict]:
+        """
+        Validate image using CLIP similarity.
 
         Args:
             image_path: Path to image.
@@ -230,17 +158,15 @@ class ImageValidator:
         Returns:
             Tuple of (is_valid, scores_dict).
         """
-        scores = {}
+        scores: dict = {}
 
         if self.clip_model is None or self.clip_processor is None:
             logger.warning("CLIP model not available")
             return True, scores
 
         try:
-            # Load image
             image = Image.open(image_path).convert("RGB")
 
-            # Prepare inputs
             text_inputs = keywords + ["flood", "disaster", "water damage", "emergency"]
             inputs = self.clip_processor(
                 text=text_inputs,
@@ -249,26 +175,22 @@ class ImageValidator:
                 padding=True,
             ).to(self.device)
 
-            # Compute similarity
             with torch.no_grad():
                 outputs = self.clip_model(**inputs)
                 logits_per_image = outputs.logits_per_image
                 probs = logits_per_image.softmax(dim=-1)
 
-            # Get max probability for keyword matches
             max_prob = probs[0, :len(keywords)].max().item()
             scores["clip_max_prob"] = max_prob
 
-            # Get average probability
             avg_prob = probs[0, :len(keywords)].mean().item()
             scores["clip_avg_prob"] = avg_prob
 
-            # Check threshold
-            is_valid = max_prob >= self.clip_threshold
+            is_valid = max_prob >= self.threshold
 
             logger.debug(
                 f"CLIP check: max_prob={max_prob:.3f}, avg_prob={avg_prob:.3f}, "
-                f"threshold={self.clip_threshold}"
+                f"threshold={self.threshold}"
             )
 
             return is_valid, scores
@@ -276,6 +198,145 @@ class ImageValidator:
         except _TORCH_ERRORS as e:
             logger.exception(f"Error in CLIP check: {e}")
             return False, scores
+
+    def check_batch(
+        self,
+        image_paths: List[Path],
+        keywords: List[str],
+    ) -> List[bool]:
+        """
+        Batch CLIP validation for efficiency.
+
+        Args:
+            image_paths: List of image paths.
+            keywords: List of keywords to match.
+
+        Returns:
+            List of validation results.
+        """
+        if self.clip_model is None or self.clip_processor is None:
+            return [True] * len(image_paths)
+
+        results = []
+
+        for i in range(0, len(image_paths), self.batch_size):
+            batch_paths = image_paths[i:i + self.batch_size]
+
+            try:
+                images = [
+                    Image.open(p).convert("RGB")
+                    for p in batch_paths
+                ]
+
+                text_inputs = keywords + ["flood", "disaster", "water damage", "emergency"]
+                inputs = self.clip_processor(
+                    text=text_inputs,
+                    images=images,
+                    return_tensors="pt",
+                    padding=True,
+                ).to(self.device)
+
+                with torch.no_grad():
+                    outputs = self.clip_model(**inputs)
+                    logits_per_image = outputs.logits_per_image
+                    probs = logits_per_image.softmax(dim=-1)
+
+                batch_results = [
+                    probs[j, :len(keywords)].max().item() >= self.threshold
+                    for j in range(len(batch_paths))
+                ]
+                results.extend(batch_results)
+
+            except _TORCH_ERRORS as e:
+                logger.exception(f"Error in batch CLIP check: {e}")
+                results.extend([False] * len(batch_paths))
+
+        return results
+
+
+class ImageValidator:
+    """
+    Composite image validator using pluggable strategies.
+
+    Delegates validation to a list of BaseValidator implementations,
+    short-circuiting on the first failure.
+    """
+
+    def __init__(
+        self,
+        clip_threshold: float = CLIPValidator.DEFAULT_THRESHOLD,
+        clip_model_name: str = CLIPValidator.DEFAULT_MODEL,
+        enable_heuristic: bool = True,
+        enable_clip: bool = True,
+        device: Optional[str] = None,
+        validators: Optional[List[BaseValidator]] = None,
+    ) -> None:
+        """
+        Initialize ImageValidator.
+
+        Args:
+            clip_threshold: CLIP similarity threshold (0-1).
+            clip_model_name: CLIP model name.
+            enable_heuristic: Enable heuristic filtering.
+            enable_clip: Enable CLIP filtering.
+            device: Device to use (cuda, cpu, or auto).
+            validators: Optional explicit list of validators (overrides flags).
+        """
+        if validators is not None:
+            self.validators = validators
+        else:
+            self.validators: List[BaseValidator] = []
+            if enable_heuristic:
+                self.validators.append(HeuristicValidator())
+            if enable_clip and CLIP_AVAILABLE:
+                self.validators.append(
+                    CLIPValidator(
+                        threshold=clip_threshold,
+                        model_name=clip_model_name,
+                        device=device,
+                    )
+                )
+
+        logger.info(
+            f"ImageValidator initialized with {len(self.validators)} strategies: "
+            f"{[type(v).__name__ for v in self.validators]}"
+        )
+
+    def validate(
+        self,
+        image_path: Path,
+        keywords: List[str],
+        return_scores: bool = False,
+    ) -> bool | Tuple[bool, dict]:
+        """
+        Validate image against keywords using all strategies.
+
+        Args:
+            image_path: Path to image.
+            keywords: List of keywords to match.
+            return_scores: Whether to return validation scores.
+
+        Returns:
+            True if image is valid, False otherwise.
+            If return_scores=True, returns (is_valid, scores_dict).
+        """
+        all_scores: dict = {}
+
+        for validator in self.validators:
+            is_valid, scores = validator.check(image_path, keywords)
+            all_scores.update(scores)
+
+            if not is_valid:
+                logger.debug(
+                    f"Image failed {type(validator).__name__} check: {image_path}"
+                )
+                if return_scores:
+                    return False, all_scores
+                return False
+
+        if return_scores:
+            return True, all_scores
+        return True
 
     def validate_batch(
         self,
@@ -294,93 +355,36 @@ class ImageValidator:
         Returns:
             List of validation results.
         """
-        results = []
+        results: List[Optional[bool]] = [None] * len(image_paths)
+        remaining_indices = list(range(len(image_paths)))
 
-        # First pass: heuristic filtering
-        valid_paths = []
-        for img_path in image_paths:
-            if self.enable_heuristic:
-                is_valid, _ = self._heuristic_check(img_path)
-                if is_valid:
-                    valid_paths.append(img_path)
-                else:
-                    results.append(False)
+        for validator in self.validators:
+            if not remaining_indices:
+                break
+
+            # Use batch check for CLIPValidator
+            if isinstance(validator, CLIPValidator):
+                remaining_paths = [image_paths[i] for i in remaining_indices]
+                batch_results = validator.check_batch(remaining_paths, keywords)
+                still_remaining = []
+                for idx, is_valid in zip(remaining_indices, batch_results):
+                    if not is_valid:
+                        results[idx] = False
+                    else:
+                        still_remaining.append(idx)
+                remaining_indices = still_remaining
             else:
-                valid_paths.append(img_path)
+                still_remaining = []
+                for idx in remaining_indices:
+                    is_valid, _ = validator.check(image_paths[idx], keywords)
+                    if not is_valid:
+                        results[idx] = False
+                    else:
+                        still_remaining.append(idx)
+                remaining_indices = still_remaining
 
-        # Second pass: CLIP filtering (batch processing)
-        if self.enable_clip and valid_paths:
-            clip_results = self._clip_check_batch(valid_paths, keywords, batch_size)
-
-            # Merge results
-            valid_set = set(valid_paths)
-            clip_idx = 0
-            for img_path in image_paths:
-                if img_path in valid_set:
-                    results.append(clip_results[clip_idx])
-                    clip_idx += 1
-                else:
-                    results.append(False)
-
-        return results
-
-    def _clip_check_batch(
-        self,
-        image_paths: List[Path],
-        keywords: List[str],
-        batch_size: int,
-    ) -> List[bool]:
-        """
-        Batch CLIP validation for efficiency.
-
-        Args:
-            image_paths: List of image paths.
-            keywords: List of keywords to match.
-            batch_size: Batch size.
-
-        Returns:
-            List of validation results.
-        """
-        if self.clip_model is None or self.clip_processor is None:
-            return [True] * len(image_paths)
-
-        results = []
-
-        # Process in batches
-        for i in range(0, len(image_paths), batch_size):
-            batch_paths = image_paths[i:i + batch_size]
-
-            try:
-                # Load images
-                images = [
-                    Image.open(p).convert("RGB")
-                    for p in batch_paths
-                ]
-
-                # Prepare inputs
-                text_inputs = keywords + ["flood", "disaster", "water damage", "emergency"]
-                inputs = self.clip_processor(
-                    text=text_inputs,
-                    images=images,
-                    return_tensors="pt",
-                    padding=True,
-                ).to(self.device)
-
-                # Compute similarity
-                with torch.no_grad():
-                    outputs = self.clip_model(**inputs)
-                    logits_per_image = outputs.logits_per_image
-                    probs = logits_per_image.softmax(dim=-1)
-
-                # Check threshold
-                batch_results = [
-                    probs[j, :len(keywords)].max().item() >= self.clip_threshold
-                    for j in range(len(batch_paths))
-                ]
-                results.extend(batch_results)
-
-            except _TORCH_ERRORS as e:
-                logger.exception(f"Error in batch CLIP check: {e}")
-                results.extend([False] * len(batch_paths))
+        # Mark remaining (passed all validators) as valid
+        for idx in remaining_indices:
+            results[idx] = True
 
         return results

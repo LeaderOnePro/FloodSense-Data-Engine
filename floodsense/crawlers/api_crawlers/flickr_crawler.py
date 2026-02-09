@@ -13,10 +13,12 @@ import requests
 from loguru import logger
 
 from floodsense.crawlers.api_crawlers.base_api_crawler import BaseAPICrawler
+from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.config import CrawlerConfig
 from floodsense.utils.proxy import ProxyManager
 
 
+@BaseCrawler.register("flickr")
 class FlickrCrawler(BaseAPICrawler):
     """
     Crawler for Flickr API.
