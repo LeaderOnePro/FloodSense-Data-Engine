@@ -48,6 +48,8 @@ class CleaningPipeline:
         extract_video_frames: bool = True,
         remove_blur: bool = True,
         deduplicate: bool = True,
+        scene_threshold: Optional[float] = None,
+        blur_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Run the complete cleaning pipeline.
@@ -58,6 +60,8 @@ class CleaningPipeline:
             extract_video_frames: Whether to extract frames from videos.
             remove_blur: Whether to remove blurry images.
             deduplicate: Whether to remove duplicates.
+            scene_threshold: Scene change threshold for keyframe extraction.
+            blur_threshold: Blur detection threshold.
 
         Returns:
             Dictionary with pipeline statistics.
@@ -92,6 +96,8 @@ class CleaningPipeline:
             video_stats = self._process_videos(
                 input_dir,
                 videos_output_dir,
+                scene_threshold=scene_threshold,
+                blur_threshold=blur_threshold,
             )
             stats["videos"] = video_stats
 
@@ -162,6 +168,8 @@ class CleaningPipeline:
         self,
         input_dir: Path,
         output_dir: Path,
+        scene_threshold: Optional[float] = None,
+        blur_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Process all videos in input directory.
@@ -169,6 +177,8 @@ class CleaningPipeline:
         Args:
             input_dir: Directory containing videos.
             output_dir: Directory to save extracted frames.
+            scene_threshold: Scene change threshold for keyframe extraction.
+            blur_threshold: Blur detection threshold.
 
         Returns:
             Dictionary with video processing statistics.
@@ -182,9 +192,15 @@ class CleaningPipeline:
             return {"total": 0, "processed": 0, "final": 0}
 
         # Extract frames
+        kwargs: Dict[str, Any] = {}
+        if scene_threshold is not None:
+            kwargs["scene_threshold"] = scene_threshold
+        if blur_threshold is not None:
+            kwargs["blur_threshold"] = blur_threshold
         extracted_frames, video_stats = self.video_processor.process_directory(
             input_dir,
             output_dir,
+            **kwargs,
         )
 
         return video_stats

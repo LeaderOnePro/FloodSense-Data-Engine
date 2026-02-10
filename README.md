@@ -83,40 +83,6 @@ api_sources:
     api_key: null  # or set FLOODSENSE_PEXELS_API_KEY
 ```
 
-## CLI Scripts
-
-```bash
-# Crawl images
-python scripts/crawl_images.py \
-  --keywords "flood trapped people" "submerged car" \
-  --max-results 100 --output-dir data/raw
-
-# Crawl from professional API sources
-python scripts/crawl_professional_images.py \
-  --keywords "flood disaster" --max-results 50
-
-# Crawl videos
-python scripts/crawl_videos.py \
-  --keywords "flash flood" --max-results 10
-
-# Extract video frames
-python scripts/extract_frames.py \
-  --input-dir data/raw --output-dir data/processed/video_frames
-
-# Clean data
-python scripts/clean_data.py \
-  --input-dir data/raw --output-dir data/processed
-
-# Validate images
-python scripts/validate_images.py \
-  --image-dir data/processed --keywords "flood"
-
-# Generate synthetic data
-export FLOODSENSE_API_KEY="your-key"
-python scripts/generate_synthetic.py \
-  --prompts config/prompts.json --output-dir data/synthetic
-```
-
 ## Project Structure
 
 ```
@@ -149,7 +115,6 @@ FloodSense-Data-Engine/
 │       ├── file_utils.py          # FileUtils, CheckpointManager
 │       ├── logger.py              # Logging setup
 │       └── proxy.py               # Proxy rotation
-├── scripts/                       # Standalone CLI scripts
 ├── config/
 │   ├── config.yaml
 │   └── prompts.json

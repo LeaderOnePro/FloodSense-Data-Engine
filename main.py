@@ -412,6 +412,13 @@ class ProcessPane(VerticalScroll):
             yield Label("Deduplicate")
             yield Switch(value=True, id="proc-dedup")
 
+        with Horizontal(classes="form-row"):
+            yield Label("Scene threshold")
+            yield Input(value="30.0", id="proc-scene-threshold")
+        with Horizontal(classes="form-row"):
+            yield Label("Blur threshold")
+            yield Input(value="100.0", id="proc-blur-threshold")
+
         with Horizontal(classes="action-bar"):
             yield Button("Run Pipeline", id="btn-process", variant="primary")
 
@@ -433,6 +440,8 @@ class ProcessPane(VerticalScroll):
         extract_frames = self.query_one("#proc-frames", Switch).value
         remove_blur = self.query_one("#proc-blur", Switch).value
         deduplicate = self.query_one("#proc-dedup", Switch).value
+        scene_threshold = float(self.query_one("#proc-scene-threshold", Input).value or "30.0")
+        blur_threshold = float(self.query_one("#proc-blur-threshold", Input).value or "100.0")
 
         cfg: Config = self.app.config  # type: ignore[attr-defined]
 
@@ -445,6 +454,8 @@ class ProcessPane(VerticalScroll):
                 extract_video_frames=extract_frames,
                 remove_blur=remove_blur,
                 deduplicate=deduplicate,
+                scene_threshold=scene_threshold,
+                blur_threshold=blur_threshold,
             )
             self.app.call_from_thread(
                 log.write, f"[green]Pipeline complete.[/green]"
@@ -577,6 +588,9 @@ class ValidatePane(VerticalScroll):
         with Horizontal(classes="switch-row"):
             yield Label("Enable CLIP filter")
             yield Switch(value=True, id="val-clip")
+        with Horizontal(classes="switch-row"):
+            yield Label("Delete invalid images")
+            yield Switch(value=False, id="val-delete")
 
         with Horizontal(classes="action-bar"):
             yield Button("Validate", id="btn-validate", variant="primary")
@@ -599,6 +613,7 @@ class ValidatePane(VerticalScroll):
         keywords = [k.strip() for k in kw_raw.split(",") if k.strip()]
         enable_heuristic = self.query_one("#val-heuristic", Switch).value
         enable_clip = self.query_one("#val-clip", Switch).value
+        delete_invalid = self.query_one("#val-delete", Switch).value
 
         try:
             validator = ImageValidator(
@@ -620,17 +635,29 @@ class ValidatePane(VerticalScroll):
 
             valid_count = 0
             invalid_count = 0
+            invalid_paths: list[Path] = []
             for img_path in images:
                 result = validator.validate(img_path, keywords=keywords)
                 if result:
                     valid_count += 1
                 else:
                     invalid_count += 1
+                    invalid_paths.append(img_path)
 
+            if delete_invalid and invalid_paths:
+                for p in invalid_paths:
+                    p.unlink(missing_ok=True)
+
+            pass_rate = valid_count / len(images) * 100
+            msg = (
+                f"Done — {valid_count} valid, {invalid_count} invalid "
+                f"out of {len(images)} images ({pass_rate:.1f}%)"
+            )
+            if delete_invalid and invalid_paths:
+                msg += f"\nDeleted {len(invalid_paths)} invalid images."
             self.app.call_from_thread(
                 log.write,
-                f"[green]Done — {valid_count} valid, {invalid_count} invalid "
-                f"out of {len(images)} images.[/green]",
+                f"[green]{msg}[/green]",
             )
         except Exception as exc:
             self.app.call_from_thread(log.write, f"[red]Error: {exc}[/red]")

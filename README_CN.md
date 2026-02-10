@@ -83,40 +83,6 @@ api_sources:
     api_key: null  # 或设置 FLOODSENSE_PEXELS_API_KEY
 ```
 
-## CLI 脚本
-
-```bash
-# 爬取图片
-python scripts/crawl_images.py \
-  --keywords "洪水被困人员" "被淹没的汽车" \
-  --max-results 100 --output-dir data/raw
-
-# 从专业 API 源爬取
-python scripts/crawl_professional_images.py \
-  --keywords "flood disaster" --max-results 50
-
-# 爬取视频
-python scripts/crawl_videos.py \
-  --keywords "flash flood" --max-results 10
-
-# 提取视频帧
-python scripts/extract_frames.py \
-  --input-dir data/raw --output-dir data/processed/video_frames
-
-# 清洗数据
-python scripts/clean_data.py \
-  --input-dir data/raw --output-dir data/processed
-
-# 验证图片
-python scripts/validate_images.py \
-  --image-dir data/processed --keywords "flood"
-
-# 生成合成数据
-export FLOODSENSE_API_KEY="your-key"
-python scripts/generate_synthetic.py \
-  --prompts config/prompts.json --output-dir data/synthetic
-```
-
 ## 项目结构
 
 ```
@@ -149,7 +115,6 @@ FloodSense-Data-Engine/
 │       ├── file_utils.py          # 文件工具、断点续传
 │       ├── logger.py              # 日志配置
 │       └── proxy.py               # 代理轮换
-├── scripts/                       # 独立 CLI 脚本
 ├── config/
 │   ├── config.yaml
 │   └── prompts.json
