@@ -69,7 +69,7 @@ processor:
 
 synthesizer:
   api_key: null  # 或设置环境变量 FLOODSENSE_API_KEY
-  model: "gemini-2.0-flash-preview-image-generation"
+  model: "gemini-3-pro-image-preview"
 
 validator:
   enable_heuristic: true

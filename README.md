@@ -69,7 +69,7 @@ processor:
 
 synthesizer:
   api_key: null  # or set FLOODSENSE_API_KEY env var
-  model: "gemini-2.0-flash-preview-image-generation"
+  model: "gemini-3-pro-image-preview"
 
 validator:
   enable_heuristic: true

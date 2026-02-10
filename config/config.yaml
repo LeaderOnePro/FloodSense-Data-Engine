@@ -22,7 +22,7 @@ processor:
 # Synthesizer settings
 synthesizer:
   api_key: null                     # Set via FLOODSENSE_API_KEY environment variable
-  model: "gemini-2.0-flash-preview-image-generation"
+  model: "gemini-3-pro-image-preview"
   max_retries: 5
   retry_delay: 2.0
   batch_size: 10
