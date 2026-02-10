@@ -59,28 +59,59 @@ crawler:
   max_workers: 4
   timeout: 30
   retry_count: 3
+  retry_delay: 1.0
 
 processor:
   target_resolution: [1920, 1080]
-  min_resolution: [1280, 720]
+  min_resolution: [480, 360]
   blur_threshold: 100.0
   scene_threshold: 30.0
   phash_threshold: 8
 
 synthesizer:
-  api_key: null  # or set FLOODSENSE_API_KEY env var
+  api_key: null          # or set FLOODSENSE_API_KEY env var
   model: "gemini-3-pro-image-preview"
+  max_retries: 5
+  retry_delay: 2.0
+  batch_size: 10
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  synthetic_dir: "data/synthetic"
+  checkpoint_dir: "data/.checkpoints"
+
+proxy:
+  enabled: false
+  http: null
+  https: null
+
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  rotation: "10 MB"
+  retention: "7 days"
 
 validator:
   enable_heuristic: true
   enable_clip: true
   clip_threshold: 0.25
+  clip_model: "openai/clip-vit-base-patch32"
 
 api_sources:
   unsplash:
-    api_key: null  # or set FLOODSENSE_UNSPLASH_API_KEY
+    api_key: null        # or set FLOODSENSE_UNSPLASH_API_KEY
+    rate_limit: 50
   pexels:
-    api_key: null  # or set FLOODSENSE_PEXELS_API_KEY
+    api_key: null        # or set FLOODSENSE_PEXELS_API_KEY
+    rate_limit: 200
+  flickr:
+    api_key: null        # or set FLOODSENSE_FLICKR_API_KEY
+    rate_limit: 3600
+  nasa:
+    api_key: null
+  wikimedia:
+    api_key: null
 ```
 
 ## Project Structure
