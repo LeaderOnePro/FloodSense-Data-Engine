@@ -26,11 +26,10 @@ git clone https://github.com/LeaderOnePro/FloodSense-Data-Engine.git
 cd FloodSense-Data-Engine
 
 # Install
-pip install -e ".[dev]"
-pip install textual          # for TUI
+uv sync
 
 # Launch TUI
-python main.py
+uv run python main.py
 ```
 
 ## TUI

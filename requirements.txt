@@ -34,3 +34,6 @@ tqdm>=4.66.0
 
 # Numerical computing
 numpy>=1.24.0
+
+# TUI
+textual>=0.40.0
