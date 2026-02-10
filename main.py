@@ -47,6 +47,7 @@ from textual.widgets import (
 # ---------------------------------------------------------------------------
 from floodsense.utils.config import Config
 from floodsense.utils.file_utils import FileUtils
+from floodsense.utils.i18n import t, set_lang, get_lang
 
 # Importing the crawlers package triggers @BaseCrawler.register decorators
 from floodsense.crawlers import (  # noqa: F401
@@ -170,16 +171,19 @@ ContentSwitcher {
 
 RichLog {
     height: 1fr;
+    min-height: 12;
     border: round $surface-lighten-2;
     margin-top: 1;
 }
 
 TextArea {
     height: 1fr;
+    min-height: 12;
 }
 
 DataTable {
     height: 1fr;
+    min-height: 12;
 }
 
 SelectionList {
@@ -212,30 +216,43 @@ class DashboardPane(VerticalScroll):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Dashboard", classes="section-title")
+        yield Static(t("dashboard"), classes="section-title", id="dash-title")
 
         with Horizontal():
             with Vertical(classes="card", id="card-raw"):
-                yield Static("Raw Data", classes="card-title")
+                yield Static(t("raw_data"), classes="card-title", id="dash-raw-title")
                 yield Static("—", id="raw-count", classes="card-value")
             with Vertical(classes="card", id="card-processed"):
-                yield Static("Processed Data", classes="card-title")
+                yield Static(t("processed_data"), classes="card-title", id="dash-proc-title")
                 yield Static("—", id="processed-count", classes="card-value")
             with Vertical(classes="card", id="card-synthetic"):
-                yield Static("Synthetic Data", classes="card-title")
+                yield Static(t("synthetic_data"), classes="card-title", id="dash-synth-title")
                 yield Static("—", id="synthetic-count", classes="card-value")
 
         with Horizontal(classes="action-bar"):
-            yield Button("Refresh", id="btn-refresh-dash", variant="primary")
+            yield Button(t("refresh"), id="btn-refresh-dash", variant="primary")
 
-        yield Static("Registered Crawlers", classes="section-title")
+        yield Static(t("registered_crawlers"), classes="section-title", id="dash-crawlers-title")
         yield DataTable(id="crawler-table")
 
     def on_mount(self) -> None:
         table = self.query_one("#crawler-table", DataTable)
-        table.add_columns("Name", "Class", "Type")
+        table.add_columns(t("col_name"), t("col_class"), t("col_type"))
         self._refresh_table()
         self.action_refresh()
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#dash-title", Static).update(t("dashboard"))
+        self.query_one("#dash-raw-title", Static).update(t("raw_data"))
+        self.query_one("#dash-proc-title", Static).update(t("processed_data"))
+        self.query_one("#dash-synth-title", Static).update(t("synthetic_data"))
+        self.query_one("#btn-refresh-dash", Button).label = t("refresh")
+        self.query_one("#dash-crawlers-title", Static).update(t("registered_crawlers"))
+        # Rebuild table columns with translated headers
+        table = self.query_one("#crawler-table", DataTable)
+        table.clear(columns=True)
+        table.add_columns(t("col_name"), t("col_class"), t("col_type"))
+        self._refresh_table()
 
     def _refresh_table(self) -> None:
         table = self.query_one("#crawler-table", DataTable)
@@ -278,31 +295,31 @@ class CrawlPane(VerticalScroll):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Crawl", classes="section-title")
+        yield Static(t("crawl"), classes="section-title", id="crawl-title")
 
         with Horizontal(classes="form-row"):
-            yield Label("Keywords (comma)")
+            yield Label(t("keywords_comma"), id="lbl-crawl-kw")
             yield Input(placeholder="flood, urban flood, ...", id="crawl-keywords")
         with Horizontal(classes="form-row"):
-            yield Label("Max results")
+            yield Label(t("max_results"), id="lbl-crawl-max")
             yield Input(value="100", id="crawl-max")
         with Horizontal(classes="form-row"):
-            yield Label("Output dir")
+            yield Label(t("output_dir"), id="lbl-crawl-output")
             yield Input(value="data/raw", id="crawl-output")
         with Horizontal(classes="form-row"):
-            yield Label("Crawler type")
+            yield Label(t("crawler_type"), id="lbl-crawl-type")
             yield Select(
                 [
-                    ("Image Spider", "image_spider"),
-                    ("Multi-Source API", "multi_source"),
-                    ("Video (yt-dlp)", "video"),
+                    (t("opt_image_spider"), "image_spider"),
+                    (t("opt_multi_source"), "multi_source"),
+                    (t("opt_video"), "video"),
                 ],
                 id="crawl-type",
                 value="image_spider",
             )
 
         with Vertical(id="multi-source-group"):
-            yield Static("Select API sources:", classes="section-title")
+            yield Static(t("select_api_sources"), classes="section-title", id="crawl-api-title")
             yield SelectionList[str](
                 ("Unsplash", "unsplash", True),
                 ("Pexels", "pexels", True),
@@ -313,10 +330,29 @@ class CrawlPane(VerticalScroll):
             )
 
         with Horizontal(classes="action-bar"):
-            yield Button("Start Crawl", id="btn-crawl", variant="primary")
+            yield Button(t("start_crawl"), id="btn-crawl", variant="primary")
 
-        yield Static("Output", classes="section-title")
+        yield Static(t("output"), classes="section-title", id="crawl-output-title")
         yield RichLog(id="crawl-log", highlight=True, markup=True)
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#crawl-title", Static).update(t("crawl"))
+        self.query_one("#lbl-crawl-kw", Label).update(t("keywords_comma"))
+        self.query_one("#lbl-crawl-max", Label).update(t("max_results"))
+        self.query_one("#lbl-crawl-output", Label).update(t("output_dir"))
+        self.query_one("#lbl-crawl-type", Label).update(t("crawler_type"))
+        # Rebuild Select options with translated labels
+        sel = self.query_one("#crawl-type", Select)
+        current = sel.value
+        sel.set_options([
+            (t("opt_image_spider"), "image_spider"),
+            (t("opt_multi_source"), "multi_source"),
+            (t("opt_video"), "video"),
+        ])
+        sel.value = current
+        self.query_one("#crawl-api-title", Static).update(t("select_api_sources"))
+        self.query_one("#btn-crawl", Button).label = t("start_crawl")
+        self.query_one("#crawl-output-title", Static).update(t("output"))
 
     def on_select_changed(self, event: Select.Changed) -> None:
         group = self.query_one("#multi-source-group")
@@ -338,7 +374,7 @@ class CrawlPane(VerticalScroll):
         kw_raw = self.query_one("#crawl-keywords", Input).value.strip()
         keywords = [k.strip() for k in kw_raw.split(",") if k.strip()]
         if not keywords:
-            self.app.call_from_thread(log.write, "[red]Please enter keywords.[/red]")
+            self.app.call_from_thread(log.write, f"[red]{t('msg_enter_keywords')}[/red]")
             self.app.call_from_thread(btn.set_class, False, "-disabled")
             return
 
@@ -350,37 +386,44 @@ class CrawlPane(VerticalScroll):
 
         try:
             if crawler_type == "image_spider":
-                self.app.call_from_thread(log.write, "Starting ImageSpider …")
+                self.app.call_from_thread(log.write, t("msg_starting_spider"))
                 crawler = ImageSpider(config=cfg.crawler, output_dir=output_dir)
                 paths = crawler.crawl(keywords, max_results=max_results)
                 self.app.call_from_thread(
-                    log.write, f"[green]Done — {len(paths)} images downloaded.[/green]"
+                    log.write, f"[green]{t('msg_done_images', n=len(paths))}[/green]"
                 )
 
             elif crawler_type == "multi_source":
                 sel_list = self.query_one("#source-selection", SelectionList)
                 sources = [str(v) for v in sel_list.selected]
                 self.app.call_from_thread(
-                    log.write, f"Starting MultiSourceCrawler (sources={sources}) …"
+                    log.write, t("msg_starting_multi", sources=sources)
                 )
                 crawler = MultiSourceCrawler(
                     config=cfg, output_dir=output_dir, sources=sources
                 )
                 paths = crawler.crawl(keywords, max_results=max_results)
                 self.app.call_from_thread(
-                    log.write, f"[green]Done — {len(paths)} images downloaded.[/green]"
+                    log.write, f"[green]{t('msg_done_images', n=len(paths))}[/green]"
                 )
 
             elif crawler_type == "video":
-                self.app.call_from_thread(log.write, "Starting VideoCrawler …")
+                self.app.call_from_thread(log.write, t("msg_starting_video"))
                 crawler = VideoCrawler(config=cfg.crawler, output_dir=output_dir)
                 paths = crawler.crawl(keywords, max_results=max_results)
                 self.app.call_from_thread(
-                    log.write, f"[green]Done — {len(paths)} videos downloaded.[/green]"
+                    log.write, f"[green]{t('msg_done_videos', n=len(paths))}[/green]"
                 )
 
         except Exception as exc:
-            self.app.call_from_thread(log.write, f"[red]Error: {exc}[/red]")
+            msg = str(exc)
+            if "Executable doesn't exist" in msg or "playwright install" in msg.lower():
+                self.app.call_from_thread(
+                    log.write,
+                    f"[red]{t('msg_playwright_missing')}[/red]",
+                )
+            else:
+                self.app.call_from_thread(log.write, f"[red]Error: {exc}[/red]")
         finally:
             self.app.call_from_thread(btn.set_class, False, "-disabled")
 
@@ -393,37 +436,49 @@ class ProcessPane(VerticalScroll):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Process", classes="section-title")
+        yield Static(t("process"), classes="section-title", id="proc-title")
 
         with Horizontal(classes="form-row"):
-            yield Label("Input dir")
+            yield Label(t("input_dir"), id="lbl-proc-input")
             yield Input(value="data/raw", id="proc-input")
         with Horizontal(classes="form-row"):
-            yield Label("Output dir")
+            yield Label(t("output_dir"), id="lbl-proc-output")
             yield Input(value="data/processed", id="proc-output")
 
         with Horizontal(classes="switch-row"):
-            yield Label("Extract video frames")
+            yield Label(t("extract_video_frames"), id="lbl-proc-frames")
             yield Switch(value=True, id="proc-frames")
         with Horizontal(classes="switch-row"):
-            yield Label("Remove blurry images")
+            yield Label(t("remove_blurry"), id="lbl-proc-blur")
             yield Switch(value=True, id="proc-blur")
         with Horizontal(classes="switch-row"):
-            yield Label("Deduplicate")
+            yield Label(t("deduplicate"), id="lbl-proc-dedup")
             yield Switch(value=True, id="proc-dedup")
 
         with Horizontal(classes="form-row"):
-            yield Label("Scene threshold")
+            yield Label(t("scene_threshold"), id="lbl-proc-scene")
             yield Input(value="30.0", id="proc-scene-threshold")
         with Horizontal(classes="form-row"):
-            yield Label("Blur threshold")
+            yield Label(t("blur_threshold"), id="lbl-proc-blur-th")
             yield Input(value="100.0", id="proc-blur-threshold")
 
         with Horizontal(classes="action-bar"):
-            yield Button("Run Pipeline", id="btn-process", variant="primary")
+            yield Button(t("run_pipeline"), id="btn-process", variant="primary")
 
-        yield Static("Output", classes="section-title")
+        yield Static(t("output"), classes="section-title", id="proc-output-title")
         yield RichLog(id="process-log", highlight=True, markup=True)
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#proc-title", Static).update(t("process"))
+        self.query_one("#lbl-proc-input", Label).update(t("input_dir"))
+        self.query_one("#lbl-proc-output", Label).update(t("output_dir"))
+        self.query_one("#lbl-proc-frames", Label).update(t("extract_video_frames"))
+        self.query_one("#lbl-proc-blur", Label).update(t("remove_blurry"))
+        self.query_one("#lbl-proc-dedup", Label).update(t("deduplicate"))
+        self.query_one("#lbl-proc-scene", Label).update(t("scene_threshold"))
+        self.query_one("#lbl-proc-blur-th", Label).update(t("blur_threshold"))
+        self.query_one("#btn-process", Button).label = t("run_pipeline")
+        self.query_one("#proc-output-title", Static).update(t("output"))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-process":
@@ -446,7 +501,7 @@ class ProcessPane(VerticalScroll):
         cfg: Config = self.app.config  # type: ignore[attr-defined]
 
         try:
-            self.app.call_from_thread(log.write, "Running cleaning pipeline …")
+            self.app.call_from_thread(log.write, t("msg_running_pipeline"))
             pipeline = CleaningPipeline(config=cfg.processor)
             stats = pipeline.run(
                 input_dir=input_dir,
@@ -458,7 +513,7 @@ class ProcessPane(VerticalScroll):
                 blur_threshold=blur_threshold,
             )
             self.app.call_from_thread(
-                log.write, f"[green]Pipeline complete.[/green]"
+                log.write, f"[green]{t('msg_pipeline_complete')}[/green]"
             )
             for section in ("images", "videos", "total"):
                 if section in stats:
@@ -479,9 +534,9 @@ class SynthesizePane(VerticalScroll):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Synthesize", classes="section-title")
+        yield Static(t("synthesize"), classes="section-title", id="synth-title")
 
-        yield Static("Prompts (one per line):")
+        yield Static(t("prompts_per_line"), id="synth-prompts-label")
         yield TextArea(
             "a flooded street in a tropical city\n"
             "aerial view of river overflowing into farmland\n",
@@ -489,21 +544,30 @@ class SynthesizePane(VerticalScroll):
         )
 
         with Horizontal(classes="form-row"):
-            yield Label("Prompts file")
+            yield Label(t("prompts_file"), id="lbl-synth-file")
             yield Input(placeholder="(optional) path/to/prompts.json", id="synth-file")
         with Horizontal(classes="form-row"):
-            yield Label("Output dir")
+            yield Label(t("output_dir"), id="lbl-synth-output")
             yield Input(value="data/synthetic", id="synth-output")
 
         with Horizontal(classes="switch-row"):
-            yield Label("Enhance prompts")
+            yield Label(t("enhance_prompts"), id="lbl-synth-enhance")
             yield Switch(value=True, id="synth-enhance")
 
         with Horizontal(classes="action-bar"):
-            yield Button("Generate", id="btn-synth", variant="primary")
+            yield Button(t("generate"), id="btn-synth", variant="primary")
 
-        yield Static("Output", classes="section-title")
+        yield Static(t("output"), classes="section-title", id="synth-output-title")
         yield RichLog(id="synth-log", highlight=True, markup=True)
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#synth-title", Static).update(t("synthesize"))
+        self.query_one("#synth-prompts-label", Static).update(t("prompts_per_line"))
+        self.query_one("#lbl-synth-file", Label).update(t("prompts_file"))
+        self.query_one("#lbl-synth-output", Label).update(t("output_dir"))
+        self.query_one("#lbl-synth-enhance", Label).update(t("enhance_prompts"))
+        self.query_one("#btn-synth", Button).label = t("generate")
+        self.query_one("#synth-output-title", Static).update(t("output"))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-synth":
@@ -527,7 +591,7 @@ class SynthesizePane(VerticalScroll):
 
             if prompts_file:
                 self.app.call_from_thread(
-                    log.write, f"Loading prompts from {prompts_file} …"
+                    log.write, t("msg_loading_prompts", path=prompts_file)
                 )
                 paths = client.generate_from_file(
                     Path(prompts_file), output_dir, enhance_prompt=enhance
@@ -537,19 +601,19 @@ class SynthesizePane(VerticalScroll):
                 prompts = [l.strip() for l in text.splitlines() if l.strip()]
                 if not prompts:
                     self.app.call_from_thread(
-                        log.write, "[red]No prompts provided.[/red]"
+                        log.write, f"[red]{t('msg_no_prompts')}[/red]"
                     )
                     self.app.call_from_thread(btn.set_class, False, "-disabled")
                     return
                 self.app.call_from_thread(
-                    log.write, f"Generating {len(prompts)} images …"
+                    log.write, t("msg_generating", n=len(prompts))
                 )
                 paths = client.generate_batch(
                     prompts, output_dir, enhance_prompt=enhance
                 )
 
             self.app.call_from_thread(
-                log.write, f"[green]Done — {len(paths)} images generated.[/green]"
+                log.write, f"[green]{t('msg_done_generated', n=len(paths))}[/green]"
             )
         except ImportError as exc:
             self.app.call_from_thread(
@@ -573,30 +637,40 @@ class ValidatePane(VerticalScroll):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Validate", classes="section-title")
+        yield Static(t("validate"), classes="section-title", id="val-title")
 
         with Horizontal(classes="form-row"):
-            yield Label("Image dir")
+            yield Label(t("image_dir"), id="lbl-val-dir")
             yield Input(value="data/processed", id="val-dir")
         with Horizontal(classes="form-row"):
-            yield Label("Keywords (comma)")
+            yield Label(t("keywords_comma"), id="lbl-val-kw")
             yield Input(placeholder="flood, water, ...", id="val-keywords")
 
         with Horizontal(classes="switch-row"):
-            yield Label("Enable heuristic filter")
+            yield Label(t("enable_heuristic"), id="lbl-val-heuristic")
             yield Switch(value=True, id="val-heuristic")
         with Horizontal(classes="switch-row"):
-            yield Label("Enable CLIP filter")
+            yield Label(t("enable_clip"), id="lbl-val-clip")
             yield Switch(value=True, id="val-clip")
         with Horizontal(classes="switch-row"):
-            yield Label("Delete invalid images")
+            yield Label(t("delete_invalid"), id="lbl-val-delete")
             yield Switch(value=False, id="val-delete")
 
         with Horizontal(classes="action-bar"):
-            yield Button("Validate", id="btn-validate", variant="primary")
+            yield Button(t("btn_validate"), id="btn-validate", variant="primary")
 
-        yield Static("Output", classes="section-title")
+        yield Static(t("output"), classes="section-title", id="val-output-title")
         yield RichLog(id="validate-log", highlight=True, markup=True)
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#val-title", Static).update(t("validate"))
+        self.query_one("#lbl-val-dir", Label).update(t("image_dir"))
+        self.query_one("#lbl-val-kw", Label).update(t("keywords_comma"))
+        self.query_one("#lbl-val-heuristic", Label).update(t("enable_heuristic"))
+        self.query_one("#lbl-val-clip", Label).update(t("enable_clip"))
+        self.query_one("#lbl-val-delete", Label).update(t("delete_invalid"))
+        self.query_one("#btn-validate", Button).label = t("btn_validate")
+        self.query_one("#val-output-title", Static).update(t("output"))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-validate":
@@ -624,13 +698,13 @@ class ValidatePane(VerticalScroll):
             images = list(FileUtils.iter_images(image_dir))
             if not images:
                 self.app.call_from_thread(
-                    log.write, "[yellow]No images found.[/yellow]"
+                    log.write, f"[yellow]{t('msg_no_images')}[/yellow]"
                 )
                 self.app.call_from_thread(btn.set_class, False, "-disabled")
                 return
 
             self.app.call_from_thread(
-                log.write, f"Validating {len(images)} images …"
+                log.write, t("msg_validating", n=len(images))
             )
 
             valid_count = 0
@@ -649,12 +723,15 @@ class ValidatePane(VerticalScroll):
                     p.unlink(missing_ok=True)
 
             pass_rate = valid_count / len(images) * 100
-            msg = (
-                f"Done — {valid_count} valid, {invalid_count} invalid "
-                f"out of {len(images)} images ({pass_rate:.1f}%)"
+            msg = t(
+                "msg_validate_done",
+                valid=valid_count,
+                invalid=invalid_count,
+                total=len(images),
+                rate=pass_rate,
             )
             if delete_invalid and invalid_paths:
-                msg += f"\nDeleted {len(invalid_paths)} invalid images."
+                msg += "\n" + t("msg_deleted", n=len(invalid_paths))
             self.app.call_from_thread(
                 log.write,
                 f"[green]{msg}[/green]",
@@ -673,20 +750,27 @@ class ConfigPane(VerticalScroll):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Config", classes="section-title")
+        yield Static(t("config"), classes="section-title", id="cfg-title")
 
         with Horizontal(classes="form-row"):
-            yield Label("Config file")
+            yield Label(t("config_file"), id="lbl-cfg-path")
             yield Input(value="config.yaml", id="cfg-path")
 
         yield TextArea("", language="yaml", id="cfg-editor")
 
         with Horizontal(classes="action-bar"):
-            yield Button("Reload", id="btn-cfg-reload", variant="default")
-            yield Button("Apply", id="btn-cfg-apply", variant="primary")
-            yield Button("Save", id="btn-cfg-save", variant="warning")
+            yield Button(t("reload"), id="btn-cfg-reload", variant="default")
+            yield Button(t("apply"), id="btn-cfg-apply", variant="primary")
+            yield Button(t("save"), id="btn-cfg-save", variant="warning")
 
         yield RichLog(id="cfg-log", highlight=True, markup=True, max_lines=200)
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#cfg-title", Static).update(t("config"))
+        self.query_one("#lbl-cfg-path", Label).update(t("config_file"))
+        self.query_one("#btn-cfg-reload", Button).label = t("reload")
+        self.query_one("#btn-cfg-apply", Button).label = t("apply")
+        self.query_one("#btn-cfg-save", Button).label = t("save")
 
     def on_mount(self) -> None:
         self._load_config_text()
@@ -707,7 +791,7 @@ class ConfigPane(VerticalScroll):
                 p = Path(cfg_path) if cfg_path else None
                 self.app.config = Config.load(p)  # type: ignore[attr-defined]
                 self._load_config_text()
-                log.write("[green]Config reloaded.[/green]")
+                log.write(f"[green]{t('msg_config_reloaded', path=cfg_path or 'config.yaml')}[/green]")
             except Exception as exc:
                 log.write(f"[red]Reload failed: {exc}[/red]")
 
@@ -716,15 +800,15 @@ class ConfigPane(VerticalScroll):
             try:
                 parsed = yaml.safe_load(raw) or {}
                 self.app.config = Config(**parsed)  # type: ignore[attr-defined]
-                log.write("[green]Config applied.[/green]")
+                log.write(f"[green]{t('msg_config_applied')}[/green]")
             except Exception as exc:
-                log.write(f"[red]Apply failed: {exc}[/red]")
+                log.write(f"[red]{t('msg_apply_failed', err=exc)}[/red]")
 
         elif event.button.id == "btn-cfg-save":
             cfg_path = self.query_one("#cfg-path", Input).value.strip() or "config.yaml"
             try:
                 self.app.config.save(Path(cfg_path))  # type: ignore[attr-defined]
-                log.write(f"[green]Config saved to {cfg_path}.[/green]")
+                log.write(f"[green]{t('msg_config_saved', path=cfg_path)}[/green]")
             except Exception as exc:
                 log.write(f"[red]Save failed: {exc}[/red]")
 
@@ -737,10 +821,14 @@ class LogPane(Vertical):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Logs", classes="section-title")
+        yield Static(t("logs"), classes="section-title", id="log-title")
         with Horizontal(classes="action-bar"):
-            yield Button("Clear", id="btn-log-clear", variant="default")
+            yield Button(t("clear"), id="btn-log-clear", variant="default")
         yield RichLog(id="global-log", highlight=True, markup=True, max_lines=1000)
+
+    def _refresh_labels(self) -> None:
+        self.query_one("#log-title", Static).update(t("logs"))
+        self.query_one("#btn-log-clear", Button).label = t("clear")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-log-clear":
@@ -752,13 +840,13 @@ class LogPane(Vertical):
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 PANES = [
-    ("dashboard", "Dashboard", "d"),
-    ("crawl", "Crawl", "c"),
-    ("process", "Process", "p"),
-    ("synthesize", "Synthesize", "s"),
-    ("validate", "Validate", "v"),
-    ("config", "Config", "o"),
-    ("logs", "Logs", "l"),
+    ("dashboard", "dashboard", "d"),
+    ("crawl", "crawl", "c"),
+    ("process", "process", "p"),
+    ("synthesize", "synthesize", "s"),
+    ("validate", "validate", "v"),
+    ("config", "config", "o"),
+    ("logs", "logs", "l"),
 ]
 
 
@@ -776,6 +864,7 @@ class FloodSenseApp(App):
         Binding("v", "switch_pane('validate')", "Validate", show=True),
         Binding("o", "switch_pane('config')", "Config", show=True),
         Binding("l", "switch_pane('logs')", "Logs", show=True),
+        Binding("i", "toggle_lang", "EN/中文", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -795,9 +884,9 @@ class FloodSenseApp(App):
         with Horizontal():
             # Sidebar
             with Vertical(id="sidebar"):
-                for pane_id, label, key in PANES:
+                for pane_id, label_key, key in PANES:
                     yield Button(
-                        f"[{key.upper()}] {label}",
+                        f"[{key.upper()}] {t(label_key)}",
                         id=f"nav-{pane_id}",
                         classes="nav-active" if pane_id == "dashboard" else "",
                     )
@@ -828,6 +917,17 @@ class FloodSenseApp(App):
 
     def _install_loguru_sink(self) -> None:
         """Route loguru messages into the Logs pane RichLog widget."""
+        # Remove default stderr handler so logs don't corrupt the TUI
+        logger.remove()
+
+        # Suppress stdlib logging to stderr (transformers, torch, PIL, etc.)
+        import logging
+
+        logging.getLogger().handlers = [logging.NullHandler()]
+        for name in ("transformers", "torch", "PIL", "urllib3", "httpx", "httpcore"):
+            lib_logger = logging.getLogger(name)
+            lib_logger.handlers = [logging.NullHandler()]
+            lib_logger.propagate = False
 
         def _sink(message: Any) -> None:
             record = message.record
@@ -857,6 +957,30 @@ class FloodSenseApp(App):
 
     def action_switch_pane(self, pane_id: str) -> None:
         self.current_pane = pane_id
+
+    def action_toggle_lang(self) -> None:
+        new = "zh" if get_lang() == "en" else "en"
+        set_lang(new)
+        self._refresh_all_labels()
+
+    def _refresh_all_labels(self) -> None:
+        # Update sidebar buttons
+        for pane_id, label_key, key in PANES:
+            try:
+                btn = self.query_one(f"#nav-{pane_id}", Button)
+                btn.label = f"[{key.upper()}] {t(label_key)}"
+            except NoMatches:
+                pass
+        # Notify each pane to refresh its labels
+        for pane in self.query(VerticalScroll):
+            if hasattr(pane, "_refresh_labels"):
+                pane._refresh_labels()
+        # Also handle LogPane (extends Vertical, not VerticalScroll)
+        try:
+            log_pane = self.query_one("#logs", LogPane)
+            log_pane._refresh_labels()
+        except NoMatches:
+            pass
 
     def watch_current_pane(self, pane_id: str) -> None:
         try:
