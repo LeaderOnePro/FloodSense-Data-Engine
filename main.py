@@ -544,6 +544,9 @@ class SynthesizePane(VerticalScroll):
         )
 
         with Horizontal(classes="form-row"):
+            yield Label(t("api_key"), id="lbl-synth-api-key")
+            yield Input(placeholder="GEMINI_API_KEY", id="synth-api-key", password=True)
+        with Horizontal(classes="form-row"):
             yield Label(t("prompts_file"), id="lbl-synth-file")
             yield Input(placeholder="(optional) path/to/prompts.json", id="synth-file")
         with Horizontal(classes="form-row"):
@@ -560,9 +563,14 @@ class SynthesizePane(VerticalScroll):
         yield Static(t("output"), classes="section-title", id="synth-output-title")
         yield RichLog(id="synth-log", highlight=True, markup=True)
 
+    def on_mount(self) -> None:
+        api_key = self.app.config.synthesizer.api_key or ""  # type: ignore[attr-defined]
+        self.query_one("#synth-api-key", Input).value = api_key
+
     def _refresh_labels(self) -> None:
         self.query_one("#synth-title", Static).update(t("synthesize"))
         self.query_one("#synth-prompts-label", Static).update(t("prompts_per_line"))
+        self.query_one("#lbl-synth-api-key", Label).update(t("api_key"))
         self.query_one("#lbl-synth-file", Label).update(t("prompts_file"))
         self.query_one("#lbl-synth-output", Label).update(t("output_dir"))
         self.query_one("#lbl-synth-enhance", Label).update(t("enhance_prompts"))
@@ -587,6 +595,11 @@ class SynthesizePane(VerticalScroll):
 
         try:
             from floodsense.synthesizers.img_gen_models_client import ImageGenClient
+
+            api_key_input = self.query_one("#synth-api-key", Input).value.strip()
+            if api_key_input:
+                cfg.synthesizer.api_key = api_key_input
+
             client = ImageGenClient(config=cfg.synthesizer)
 
             if prompts_file:

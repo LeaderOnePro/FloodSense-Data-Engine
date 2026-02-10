@@ -62,6 +62,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "msg_running_pipeline": "Running cleaning pipeline …",
         "msg_pipeline_complete": "Pipeline complete.",
         # synthesize
+        "api_key": "API Key",
         "prompts_per_line": "Prompts (one per line):",
         "prompts_file": "Prompts file",
         "enhance_prompts": "Enhance prompts",
@@ -140,6 +141,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "msg_running_pipeline": "正在运行清洗管线 …",
         "msg_pipeline_complete": "管线完成。",
         # synthesize
+        "api_key": "API 密钥",
         "prompts_per_line": "提示词（每行一条）：",
         "prompts_file": "提示词文件",
         "enhance_prompts": "增强提示词",
