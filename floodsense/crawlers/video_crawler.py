@@ -5,7 +5,7 @@ Uses yt-dlp for downloading videos from YouTube and other platforms.
 """
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import yt_dlp
 from loguru import logger
@@ -13,6 +13,24 @@ from tqdm import tqdm
 
 from floodsense.crawlers.base import BaseCrawler
 from floodsense.utils.file_utils import FileUtils
+
+_BOT_DETECTION_HINTS = ("Sign in to confirm", "bot", "captcha")
+
+
+class _YtdlpLogger:
+    """Bridge yt-dlp log output to loguru."""
+
+    def debug(self, msg: str) -> None:
+        logger.debug(msg)
+
+    def info(self, msg: str) -> None:
+        logger.info(msg)
+
+    def warning(self, msg: str) -> None:
+        logger.warning(msg)
+
+    def error(self, msg: str) -> None:
+        logger.error(msg)
 
 
 class VideoCrawler(BaseCrawler):
@@ -25,6 +43,16 @@ class VideoCrawler(BaseCrawler):
     def __init__(self, *args, **kwargs) -> None:
         """Initialize VideoCrawler."""
         super().__init__(*args, **kwargs)
+
+    def _base_ydl_opts(self) -> Dict[str, Any]:
+        """Return yt-dlp options shared by search and download."""
+        opts: Dict[str, Any] = {
+            "logger": _YtdlpLogger(),
+            "extractor_args": {"youtube": {"player_client": ["android"]}},
+        }
+        if self.config.cookies_from_browser:
+            opts["cookiesfrombrowser"] = (self.config.cookies_from_browser,)
+        return opts
 
     def crawl(
         self,
@@ -84,6 +112,7 @@ class VideoCrawler(BaseCrawler):
             search_query = f"{platform}search{max_results}:{keyword}"
 
         ydl_opts = {
+            **self._base_ydl_opts(),
             "quiet": True,
             "no_warnings": True,
             "extract_flat": "in_playlist",
@@ -102,10 +131,16 @@ class VideoCrawler(BaseCrawler):
                             # Build YouTube URL from video ID
                             urls.append(f"https://www.youtube.com/watch?v={entry['id']}")
 
-        except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as e:
-            logger.exception(f"Failed to search videos for '{keyword}': {e}")
+        except Exception as e:
+            if any(hint in str(e) for hint in _BOT_DETECTION_HINTS):
+                logger.error(
+                    f"YouTube bot detection triggered for '{keyword}'. "
+                    "Set crawler.cookies_from_browser in config.yaml "
+                    "(e.g. 'chrome', 'edge', 'firefox') to supply cookies."
+                )
+            else:
+                logger.exception(f"Failed to search videos for '{keyword}': {e}")
 
-        logger.info(f"Found {len(urls)} videos for '{keyword}'")
         return urls
 
     def _download_videos(
@@ -137,8 +172,14 @@ class VideoCrawler(BaseCrawler):
                     filepath = self._download_single_video(url, output_dir)
                     if filepath:
                         downloaded_paths.append(filepath)
-                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError, OSError) as e:
-                    logger.exception(f"Failed to download video {url}: {e}")
+                except Exception as e:
+                    if any(hint in str(e) for hint in _BOT_DETECTION_HINTS):
+                        logger.error(
+                            f"YouTube bot detection triggered for {url}. "
+                            "Set crawler.cookies_from_browser in config.yaml."
+                        )
+                    else:
+                        logger.exception(f"Failed to download video {url}: {e}")
                 pbar.update(1)
 
         return downloaded_paths
@@ -159,6 +200,7 @@ class VideoCrawler(BaseCrawler):
             Path to downloaded file or None if failed.
         """
         ydl_opts = {
+            **self._base_ydl_opts(),
             "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
             "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
             "quiet": True,
@@ -184,8 +226,14 @@ class VideoCrawler(BaseCrawler):
                 if info:
                     filename = ydl.prepare_filename(info)
                     return Path(filename)
-        except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError, OSError) as e:
-            logger.exception(f"Failed to download video {url}: {e}")
+        except Exception as e:
+            if any(hint in str(e) for hint in _BOT_DETECTION_HINTS):
+                logger.error(
+                    f"YouTube bot detection triggered for {url}. "
+                    "Set crawler.cookies_from_browser in config.yaml."
+                )
+            else:
+                logger.exception(f"Failed to download video {url}: {e}")
 
         return None
 

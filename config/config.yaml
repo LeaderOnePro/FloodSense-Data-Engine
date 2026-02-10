@@ -6,6 +6,7 @@ crawler:
   timeout: 30
   retry_count: 3
   retry_delay: 1.0
+  cookies_from_browser: null  # Browser for yt-dlp cookies (e.g. chrome, edge, firefox)
   user_agents:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -21,7 +22,7 @@ processor:
 
 # Synthesizer settings
 synthesizer:
-  api_key: null                     # Set via FLOODSENSE_API_KEY environment variable
+  api_key: null                     # Set via GEMINI_API_KEY env var or enter in TUI
   model: "gemini-3-pro-image-preview"
   max_retries: 5
   retry_delay: 2.0

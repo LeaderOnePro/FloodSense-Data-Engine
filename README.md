@@ -60,6 +60,7 @@ crawler:
   timeout: 30
   retry_count: 3
   retry_delay: 1.0
+  cookies_from_browser: null  # e.g. chrome, edge, firefox (for yt-dlp bot detection)
 
 processor:
   target_resolution: [1920, 1080]
@@ -69,7 +70,7 @@ processor:
   phash_threshold: 8
 
 synthesizer:
-  api_key: null          # or set FLOODSENSE_API_KEY env var
+  api_key: null          # or set GEMINI_API_KEY env var, or enter in TUI
   model: "gemini-3-pro-image-preview"
   max_retries: 5
   retry_delay: 2.0

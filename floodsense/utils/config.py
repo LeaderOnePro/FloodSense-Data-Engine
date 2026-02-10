@@ -19,6 +19,11 @@ class CrawlerConfig(BaseModel):
     timeout: int = Field(default=30, description="Request timeout in seconds")
     retry_count: int = Field(default=3, description="Number of retries on failure")
     retry_delay: float = Field(default=1.0, description="Delay between retries")
+    cookies_from_browser: Optional[str] = Field(
+        default=None,
+        description="Browser to read cookies from (e.g. chrome, edge, firefox). "
+        "Set when yt-dlp encounters YouTube bot detection.",
+    )
     user_agents: list[str] = Field(
         default_factory=lambda: [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

@@ -60,6 +60,7 @@ crawler:
   timeout: 30
   retry_count: 3
   retry_delay: 1.0
+  cookies_from_browser: null  # 如 chrome、edge、firefox（用于 yt-dlp 反爬绕过）
 
 processor:
   target_resolution: [1920, 1080]
@@ -69,7 +70,7 @@ processor:
   phash_threshold: 8
 
 synthesizer:
-  api_key: null          # 或设置环境变量 FLOODSENSE_API_KEY
+  api_key: null          # 或设置环境变量 GEMINI_API_KEY，或在 TUI 中输入
   model: "gemini-3-pro-image-preview"
   max_retries: 5
   retry_delay: 2.0
