@@ -16,7 +16,7 @@ This project is part of a research initiative to fine-tune Qwen3-VL-235B (a mult
 - **Content Validation** — Heuristic filtering + CLIP-based semantic validation
 - **Synthetic Data Generation** — AI-powered image generation using Google Gemini API
 - **Cleaning Pipeline** — End-to-end data processing with comprehensive JSON reporting
-- **TUI** — Unified Textual terminal interface (`python main.py`) to operate all modules interactively
+- **TUI** — Unified Textual terminal interface (`python main.py`) to operate all modules interactively, with EN/ZH language toggle
 
 ## Quick Start
 
@@ -46,6 +46,7 @@ The built-in TUI provides a sidebar + 7 panes accessible via keyboard shortcuts:
 | `v` | Validate | Heuristic + CLIP content validation |
 | `o` | Config | YAML config editor with reload / apply / save |
 | `l` | Logs | Global loguru log viewer |
+| `i` | — | Toggle language (EN/中文) |
 | `q` | — | Quit |
 
 All long-running operations execute in background worker threads; the UI stays responsive.
@@ -113,6 +114,7 @@ FloodSense-Data-Engine/
 │   └── utils/
 │       ├── config.py              # Pydantic config models
 │       ├── file_utils.py          # FileUtils, CheckpointManager
+│       ├── i18n.py                # EN/ZH internationalisation
 │       ├── logger.py              # Logging setup
 │       └── proxy.py               # Proxy rotation
 ├── config/

@@ -16,7 +16,7 @@
 - **内容验证** — 启发式过滤 + CLIP 语义验证
 - **合成数据生成** — 基于 Google Gemini API 的 AI 图像生成
 - **清洗流水线** — 端到端数据处理，输出 JSON 统计报告
-- **TUI 终端界面** — 基于 Textual 的统一终端界面 (`python main.py`)，交互式操作全部模块
+- **TUI 终端界面** — 基于 Textual 的统一终端界面 (`python main.py`)，交互式操作全部模块，支持中英文实时切换
 
 ## 快速开始
 
@@ -46,6 +46,7 @@ python main.py
 | `v` | Validate | 启发式 + CLIP 内容验证 |
 | `o` | Config | YAML 配置编辑器（加载/应用/保存） |
 | `l` | Logs | 全局 loguru 日志查看器 |
+| `i` | — | 切换语言（EN/中文） |
 | `q` | — | 退出 |
 
 所有耗时操作在后台 Worker 线程中执行，UI 始终保持响应。
@@ -113,6 +114,7 @@ FloodSense-Data-Engine/
 │   └── utils/
 │       ├── config.py              # Pydantic 配置模型
 │       ├── file_utils.py          # 文件工具、断点续传
+│       ├── i18n.py                # 中英文国际化
 │       ├── logger.py              # 日志配置
 │       └── proxy.py               # 代理轮换
 ├── config/
