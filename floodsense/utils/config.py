@@ -167,7 +167,13 @@ class Config(BaseModel):
         """
         config_dict: Dict[str, Any] = {}
 
-        # Load from YAML file if provided
+        # Fall back to default config path when none provided
+        if config_path is None:
+            default_path = Path("config/config.yaml")
+            if default_path.exists():
+                config_path = default_path
+
+        # Load from YAML file
         if config_path and config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
                 config_dict = yaml.safe_load(f) or {}

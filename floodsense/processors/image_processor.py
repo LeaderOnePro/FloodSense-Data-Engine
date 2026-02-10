@@ -180,6 +180,7 @@ class ImageProcessor(BaseProcessor):
         output_dir: Path,
         remove_blur: bool = True,
         deduplicate: bool = True,
+        blur_threshold: Optional[float] = None,
     ) -> Tuple[List[Path], dict]:
         """
         Process all images in a directory.
@@ -189,6 +190,7 @@ class ImageProcessor(BaseProcessor):
             output_dir: Directory to save processed images.
             remove_blur: Whether to remove blurry images.
             deduplicate: Whether to remove duplicates.
+            blur_threshold: Blur detection threshold (default from config).
 
         Returns:
             Tuple of (processed image paths, statistics).
@@ -231,7 +233,7 @@ class ImageProcessor(BaseProcessor):
             filtered_paths: List[Path] = []
             with tqdm(processed_paths, desc="Detecting blur") as pbar:
                 for img_path in pbar:
-                    if self.check_blur(img_path):
+                    if self.check_blur(img_path, threshold=blur_threshold):
                         filtered_paths.append(img_path)
                     else:
                         img_path.unlink()

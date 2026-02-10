@@ -176,6 +176,7 @@ class BaseAPICrawler(BaseCrawler):
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
+        _retry_depth: int = 0,
     ) -> Optional[Dict[str, Any]]:
         """
         Make an API request with rate limiting.
@@ -183,6 +184,7 @@ class BaseAPICrawler(BaseCrawler):
         Args:
             endpoint: API endpoint.
             params: Query parameters.
+            _retry_depth: Internal counter for 429 retry depth.
 
         Returns:
             JSON response data or None if failed.
@@ -204,13 +206,16 @@ class BaseAPICrawler(BaseCrawler):
             self.rate_limiter.record_request()
 
             if response.status_code == 429:
+                if _retry_depth >= 3:
+                    logger.error(f"Rate limited by {self.source_name} after {_retry_depth} retries, giving up")
+                    return None
                 # Rate limited - wait and retry
                 retry_after = int(response.headers.get("Retry-After", 60))
                 logger.warning(
                     f"Rate limited by {self.source_name}. Waiting {retry_after} seconds..."
                 )
                 time.sleep(retry_after)
-                return self._make_api_request(endpoint, params)
+                return self._make_api_request(endpoint, params, _retry_depth + 1)
 
             response.raise_for_status()
             return response.json()

@@ -160,6 +160,9 @@ class CLIPValidator(BaseValidator):
         """
         scores: dict = {}
 
+        if not keywords:
+            return True, scores
+
         if self.clip_model is None or self.clip_processor is None:
             logger.warning("CLIP model not available")
             return True, scores
@@ -215,6 +218,9 @@ class CLIPValidator(BaseValidator):
             List of validation results.
         """
         if self.clip_model is None or self.clip_processor is None:
+            return [True] * len(image_paths)
+
+        if not keywords:
             return [True] * len(image_paths)
 
         results = []

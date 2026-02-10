@@ -88,6 +88,7 @@ class CleaningPipeline:
             images_output_dir,
             remove_blur,
             deduplicate,
+            blur_threshold=blur_threshold,
         )
         stats["images"] = image_stats
 
@@ -122,6 +123,7 @@ class CleaningPipeline:
         output_dir: Path,
         remove_blur: bool,
         deduplicate: bool,
+        blur_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Process all images in input directory.
@@ -131,6 +133,7 @@ class CleaningPipeline:
             output_dir: Directory to save processed images.
             remove_blur: Whether to remove blurry images.
             deduplicate: Whether to remove duplicates.
+            blur_threshold: Blur detection threshold.
 
         Returns:
             Dictionary with image processing statistics.
@@ -149,6 +152,7 @@ class CleaningPipeline:
             output_dir,
             remove_blur=remove_blur,
             deduplicate=deduplicate,
+            blur_threshold=blur_threshold,
         )
 
         # Content validation

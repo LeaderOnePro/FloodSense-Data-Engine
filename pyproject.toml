@@ -32,7 +32,6 @@ dependencies = [
     "playwright>=1.40.0",
     "yt-dlp>=2023.11.0",
     "pillow>=10.1.0",
-    "opencv-python>=4.8.0",
     "opencv-python-headless>=4.8.0",
     "imagehash>=4.3.0",
     "google-genai>=0.3.0",
@@ -47,6 +46,7 @@ dependencies = [
     "aiofiles>=23.2.0",
     "tqdm>=4.66.0",
     "numpy>=1.24.0",
+    "textual>=0.40.0",
 ]
 
 [project.optional-dependencies]
@@ -66,8 +66,8 @@ Documentation = "https://github.com/LeaderOnePro/FloodSense-Data-Engine#readme"
 Repository = "https://github.com/LeaderOnePro/FloodSense-Data-Engine"
 Issues = "https://github.com/LeaderOnePro/FloodSense-Data-Engine/issues"
 
-[tool.setuptools]
-packages = ["floodsense"]
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.setuptools.package-data]
 floodsense = ["py.typed"]
