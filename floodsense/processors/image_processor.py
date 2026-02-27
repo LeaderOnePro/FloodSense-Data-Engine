@@ -170,6 +170,8 @@ class ImageProcessor(BaseProcessor):
             if not is_duplicate:
                 unique_paths.append(img_path)
                 seen_hashes.add(phash)
+            else:
+                img_path.unlink()
 
         logger.info(f"Removed {len(image_paths) - len(unique_paths)} duplicates")
         return unique_paths
