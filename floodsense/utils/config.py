@@ -67,7 +67,7 @@ class SynthesizerConfig(BaseModel):
 
     api_key: Optional[str] = Field(default=None, description="API key for image generation service")
     model: str = Field(
-        default="gemini-3-pro-image-preview",
+        default="gemini-3.1-flash-image-preview",
         description="Model to use for image generation",
     )
     max_retries: int = Field(default=5, description="Maximum API retry attempts")

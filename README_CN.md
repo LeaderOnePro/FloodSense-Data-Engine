@@ -71,7 +71,7 @@ processor:
 
 synthesizer:
   api_key: null          # 或设置环境变量 GEMINI_API_KEY，或在 TUI 中输入
-  model: "gemini-3-pro-image-preview"
+  model: "gemini-3.1-flash-image-preview"
   max_retries: 5
   retry_delay: 2.0
   batch_size: 10
