@@ -71,7 +71,7 @@ processor:
 
 synthesizer:
   api_key: null          # or set GEMINI_API_KEY env var, or enter in TUI
-  model: "gemini-3-pro-image-preview"
+  model: "gemini-3.1-flash-image-preview"
   max_retries: 5
   retry_delay: 2.0
   batch_size: 10
