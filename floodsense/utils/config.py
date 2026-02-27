@@ -185,7 +185,7 @@ class Config(BaseModel):
 
         # Override with environment variables
         env_mappings = {
-            "FLOODSENSE_API_KEY": ("synthesizer", "api_key"),
+            "GEMINI_API_KEY": ("synthesizer", "api_key"),
             "FLOODSENSE_MODEL": ("synthesizer", "model"),
             "FLOODSENSE_PROXY_HTTP": ("proxy", "http"),
             "FLOODSENSE_PROXY_HTTPS": ("proxy", "https"),
