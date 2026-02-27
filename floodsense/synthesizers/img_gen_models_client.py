@@ -41,8 +41,7 @@ class ImageGenClient:
 
         if not self.config.api_key:
             raise ValueError(
-                "API key is required. Set GEMINI_API_KEY (or FLOODSENSE_API_KEY) environment "
-                "variable or provide in config."
+                "API key is required. Set GEMINI_API_KEY environment variable or provide in config."
             )
 
         self.client = genai.Client(api_key=self.config.api_key)

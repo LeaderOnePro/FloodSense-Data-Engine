@@ -184,7 +184,7 @@ class Config(BaseModel):
                 config_dict = yaml.safe_load(f) or {}
 
         # Override with environment variables
-        api_key_env = os.environ.get("GEMINI_API_KEY") or os.environ.get("FLOODSENSE_API_KEY")
+        api_key_env = os.environ.get("GEMINI_API_KEY")
         if api_key_env:
             config_dict.setdefault("synthesizer", {})
             config_dict["synthesizer"]["api_key"] = api_key_env
